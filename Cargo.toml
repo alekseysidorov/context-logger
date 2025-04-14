@@ -1,6 +1,14 @@
 [package]
-name = "log-context"
+name = "context-logger"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+erased-serde = "0.4.6"
+include-utils = "0.2.4"
+log = { version = "0.4.27", features = ["kv_serde"] }
+serde = "1"
+
+[dev-dependencies]
+env_logger = { version = "0.11", features = ["kv"] }
+serde = { version = "1", features = ["derive"] }
