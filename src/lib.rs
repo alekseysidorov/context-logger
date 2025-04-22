@@ -2,7 +2,7 @@ use context::CONTEXT_STACK;
 use context_properties::StaticCowStr;
 
 pub use self::{
-    context::{Context, ContextGuard},
+    context::{FutureExt, LogContext, LogContextFuture, LogContextGuard},
     context_properties::ContextValue,
 };
 
@@ -35,6 +35,7 @@ impl log::Log for ContextLogger {
                     properties: &*properties,
                 };
                 let new_record = record.to_builder().key_values(&extra_properties).build();
+
                 self.inner.log(&new_record);
             } else {
                 self.inner.log(record);

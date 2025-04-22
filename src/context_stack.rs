@@ -1,4 +1,4 @@
-use std::cell::{Ref, RefCell};
+use std::cell::{Ref, RefCell, RefMut};
 
 use crate::context_properties::ContextProperties;
 
@@ -27,6 +27,15 @@ impl ContextStack {
             None
         } else {
             Some(Ref::map(inner, |inner| inner.last().unwrap()))
+        }
+    }
+
+    pub fn current_properties_mut(&self) -> Option<RefMut<ContextProperties>> {
+        let inner = self.inner.borrow_mut();
+        if inner.is_empty() {
+            None
+        } else {
+            Some(RefMut::map(inner, |inner| inner.last_mut().unwrap()))
         }
     }
 }

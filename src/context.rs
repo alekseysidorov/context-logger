@@ -1,3 +1,7 @@
+use std::{pin::Pin, task::Poll};
+
+use pin_project::pin_project;
+
 use crate::{
     context_properties::{ContextProperties, StaticCowStr},
     context_stack::ContextStack,
@@ -8,13 +12,13 @@ thread_local! {
     pub static CONTEXT_STACK: ContextStack = const { ContextStack::new() };
 }
 
-pub struct Context {
+pub struct LogContext {
     properties: ContextProperties,
 }
 
-impl Context {
+impl LogContext {
     pub const fn new() -> Self {
-        Context {
+        Self {
             properties: ContextProperties::new(),
         }
     }
@@ -24,33 +28,84 @@ impl Context {
         key: impl Into<StaticCowStr>,
         value: impl Into<ContextValue>,
     ) -> Self {
-        self.properties = self.properties.with_property(key.into(), value.into());
+        let property = (key.into(), value.into());
+        self.properties.0.push(property);
         self
     }
 
-    pub fn enter(self) -> ContextGuard {
-        ContextGuard::enter(self)
+    pub fn add_property(key: impl Into<StaticCowStr>, value: impl Into<ContextValue>) {
+        let property = (key.into(), value.into());
+        CONTEXT_STACK.with(|stack| {
+            if let Some(mut properties) = stack.current_properties_mut() {
+                properties.0.push(property);
+            }
+        });
+    }
+
+    pub fn enter(self) -> LogContextGuard {
+        LogContextGuard::enter(self)
     }
 }
 
-impl Default for Context {
+impl Default for LogContext {
     fn default() -> Self {
         Self::new()
     }
 }
 
 #[non_exhaustive]
-pub struct ContextGuard {}
+pub struct LogContextGuard {}
 
-impl ContextGuard {
-    fn enter(context: Context) -> Self {
+impl LogContextGuard {
+    fn enter(context: LogContext) -> Self {
         CONTEXT_STACK.with(|stack| stack.push(context.properties));
         Self {}
     }
 }
 
-impl Drop for ContextGuard {
+impl Drop for LogContextGuard {
     fn drop(&mut self) {
         CONTEXT_STACK.with(|stack| stack.pop());
+    }
+}
+
+#[pin_project]
+pub struct LogContextFuture<F> {
+    #[pin]
+    inner: F,
+    properties: Option<ContextProperties>,
+}
+
+impl<F> Future for LogContextFuture<F>
+where
+    F: Future,
+{
+    type Output = F::Output;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
+        let this = self.project();
+
+        CONTEXT_STACK.with(|stack| stack.push(this.properties.take().unwrap()));
+        let result = this.inner.poll(cx);
+        this.properties
+            .replace(CONTEXT_STACK.with(|stack| stack.pop().unwrap()));
+
+        result
+    }
+}
+
+pub trait FutureExt: Future + Sized {
+    fn in_log_context(self, context: LogContext) -> LogContextFuture<Self>;
+}
+
+impl<F> FutureExt for F
+where
+    F: Future,
+{
+    fn in_log_context(self, context: LogContext) -> LogContextFuture<Self> {
+        LogContextFuture {
+            inner: self,
+            properties: Some(context.properties),
+        }
     }
 }

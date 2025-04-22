@@ -6,8 +6,8 @@ pub struct ContextValue(ContextValueInner);
 
 enum ContextValueInner {
     String(StaticCowStr),
-    Debug(Box<dyn std::fmt::Debug>),
-    Serde(Box<dyn erased_serde::Serialize>),
+    Debug(Box<dyn std::fmt::Debug + Send + Sync + 'static>),
+    Serde(Box<dyn erased_serde::Serialize + Send + Sync + 'static>),
 }
 
 #[derive(Default)]
@@ -26,24 +26,19 @@ impl ContextProperties {
     pub const fn new() -> Self {
         ContextProperties(Vec::new())
     }
-
-    pub fn with_property(mut self, key: StaticCowStr, value: ContextValue) -> Self {
-        self.0.push((key, value));
-        self
-    }
 }
 
 impl ContextValue {
     pub fn serde<S>(value: S) -> Self
     where
-        S: serde::Serialize + 'static,
+        S: serde::Serialize + Send + Sync + 'static,
     {
         ContextValue(ContextValueInner::Serde(Box::new(value)))
     }
 
     pub fn debug<T>(value: T) -> Self
     where
-        T: std::fmt::Debug + 'static,
+        T: std::fmt::Debug + Send + Sync + 'static,
     {
         ContextValue(ContextValueInner::Debug(Box::new(value)))
     }
