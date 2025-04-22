@@ -1,14 +1,17 @@
-use context::CONTEXT_STACK;
-use context_properties::StaticCowStr;
+use std::borrow::Cow;
 
+use self::context::CONTEXT_STACK;
 pub use self::{
     context::{FutureExt, LogContext, LogContextFuture, LogContextGuard},
-    context_properties::ContextValue,
+    value::ContextValue,
 };
 
 mod context;
-mod context_properties;
-mod context_stack;
+mod properties;
+mod stack;
+mod value;
+
+type StaticCowStr = Cow<'static, str>;
 
 pub struct ContextLogger {
     inner: Box<dyn log::Log>,
@@ -29,10 +32,10 @@ impl log::Log for ContextLogger {
 
     fn log(&self, record: &log::Record) {
         let _ = CONTEXT_STACK.try_with(|stack| {
-            if let Some(properties) = stack.current_properties() {
+            if let Some(top) = stack.top() {
                 let extra_properties = ExtraProperties {
                     source: &record.key_values(),
-                    properties: &*properties,
+                    properties: &*top.properties,
                 };
                 let new_record = record.to_builder().key_values(&extra_properties).build();
 

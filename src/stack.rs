@@ -1,6 +1,6 @@
 use std::cell::{Ref, RefCell, RefMut};
 
-use crate::context_properties::ContextProperties;
+use crate::properties::ContextProperties;
 
 pub struct ContextStack {
     inner: RefCell<Vec<ContextProperties>>,
@@ -21,7 +21,7 @@ impl ContextStack {
         self.inner.borrow_mut().pop()
     }
 
-    pub fn current_properties(&self) -> Option<Ref<ContextProperties>> {
+    pub fn top(&self) -> Option<Ref<ContextProperties>> {
         let inner = self.inner.borrow();
         if inner.is_empty() {
             None
@@ -30,7 +30,7 @@ impl ContextStack {
         }
     }
 
-    pub fn current_properties_mut(&self) -> Option<RefMut<ContextProperties>> {
+    pub fn top_mut(&self) -> Option<RefMut<ContextProperties>> {
         let inner = self.inner.borrow_mut();
         if inner.is_empty() {
             None

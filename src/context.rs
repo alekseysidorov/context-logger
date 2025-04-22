@@ -2,25 +2,17 @@ use std::{pin::Pin, task::Poll};
 
 use pin_project::pin_project;
 
-use crate::{
-    context_properties::{ContextProperties, StaticCowStr},
-    context_stack::ContextStack,
-    ContextValue,
-};
+use crate::{properties::ContextProperties, stack::ContextStack, ContextValue, StaticCowStr};
 
 thread_local! {
     pub static CONTEXT_STACK: ContextStack = const { ContextStack::new() };
 }
 
-pub struct LogContext {
-    properties: ContextProperties,
-}
+pub struct LogContext(ContextProperties);
 
 impl LogContext {
     pub const fn new() -> Self {
-        Self {
-            properties: ContextProperties::new(),
-        }
+        Self(ContextProperties::new())
     }
 
     pub fn with_property(
@@ -29,15 +21,16 @@ impl LogContext {
         value: impl Into<ContextValue>,
     ) -> Self {
         let property = (key.into(), value.into());
-        self.properties.0.push(property);
+        self.0.properties.push(property);
         self
     }
 
     pub fn add_property(key: impl Into<StaticCowStr>, value: impl Into<ContextValue>) {
         let property = (key.into(), value.into());
+
         CONTEXT_STACK.with(|stack| {
-            if let Some(mut properties) = stack.current_properties_mut() {
-                properties.0.push(property);
+            if let Some(mut top) = stack.top_mut() {
+                top.properties.push(property);
             }
         });
     }
@@ -58,7 +51,7 @@ pub struct LogContextGuard {}
 
 impl LogContextGuard {
     fn enter(context: LogContext) -> Self {
-        CONTEXT_STACK.with(|stack| stack.push(context.properties));
+        CONTEXT_STACK.with(|stack| stack.push(context.0));
         Self {}
     }
 }
@@ -105,7 +98,7 @@ where
     fn in_log_context(self, context: LogContext) -> LogContextFuture<Self> {
         LogContextFuture {
             inner: self,
-            properties: Some(context.properties),
+            properties: Some(context.0),
         }
     }
 }
