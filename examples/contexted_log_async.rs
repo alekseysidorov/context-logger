@@ -96,7 +96,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let log_context = LogContext::new()
         .with_property("name", "Alice")
-        .with_property("age", "25")
+        .with_property("age", 25)
+        .with_property("married", true)
         .with_property("email", "alice@example.com");
     let second_future = async move {
         tokio::task::yield_now().await;
@@ -109,7 +110,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let log_context = LogContext::new()
         .with_property("name", "Bob")
-        .with_property("age", "30")
+        .with_property("age", 30)
         .with_property("email", "bob@example.com");
     let third_future = tokio::spawn(
         async move {
@@ -135,7 +136,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let context = LogContext::new()
         .with_property("name", "Charlie")
-        .with_property("age", "35")
+        .with_property("age", 35)
         .with_property("email", "charlie@example.com");
 
     let _guard = context.enter();

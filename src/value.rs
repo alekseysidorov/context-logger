@@ -3,6 +3,13 @@ pub struct ContextValue(ContextValueInner);
 enum ContextValueInner {
     Null,
     String(String),
+    Bool(bool),
+    Char(char),
+    I64(i64),
+    U64(u64),
+    F64(f64),
+    I128(i128),
+    U128(u128),
     Debug(Box<dyn std::fmt::Debug + Send + Sync + 'static>),
     Display(Box<dyn std::fmt::Display + Send + Sync + 'static>),
     Error(Box<dyn std::error::Error + Send + Sync + 'static>),
@@ -56,6 +63,13 @@ impl ContextValue {
         match &self.0 {
             ContextValueInner::Null => log::kv::Value::null(),
             ContextValueInner::String(s) => log::kv::Value::from(&**s),
+            ContextValueInner::Bool(b) => log::kv::Value::from(*b),
+            ContextValueInner::Char(c) => log::kv::Value::from(*c),
+            ContextValueInner::I64(i) => log::kv::Value::from(*i),
+            ContextValueInner::U64(u) => log::kv::Value::from(*u),
+            ContextValueInner::F64(f) => log::kv::Value::from(*f),
+            ContextValueInner::I128(i) => log::kv::Value::from(*i),
+            ContextValueInner::U128(u) => log::kv::Value::from(*u),
             ContextValueInner::Display(value) => log::kv::Value::from_dyn_display(value),
             ContextValueInner::Debug(value) => log::kv::Value::from_dyn_debug(value),
             ContextValueInner::Error(value) => log::kv::Value::from_dyn_error(&**value),
@@ -69,3 +83,32 @@ impl From<&str> for ContextValue {
         ContextValue(ContextValueInner::String(value.to_owned()))
     }
 }
+
+macro_rules! impl_context_value_from_primitive {
+    ($($ty:ty => $arm:ident),*) => {
+        $(
+            impl From<$ty> for ContextValue {
+                fn from(value: $ty) -> Self {
+                    ContextValue(ContextValueInner::$arm(value.into()))
+                }
+            }
+        )*
+    };
+}
+
+impl_context_value_from_primitive!(
+    bool => Bool,
+    char => Char,
+    String => String,
+    i8 => I64,
+    i16 => I64,
+    i32 => I64,
+    i64 => I64,
+    u8 => U64,
+    u16 => U64,
+    u32 => U64,
+    u64 => U64,
+    f64 => F64,
+    i128 => I128,
+    u128 => U128
+);
