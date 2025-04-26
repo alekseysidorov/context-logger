@@ -18,7 +18,10 @@ pub struct ContextLogger {
 }
 
 impl ContextLogger {
-    pub fn new<L: log::Log + 'static>(inner: L) -> Self {
+    pub fn new<L>(inner: L) -> Self
+    where
+        L: log::Log + 'static,
+    {
         Self {
             inner: Box::new(inner),
         }

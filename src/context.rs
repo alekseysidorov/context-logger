@@ -15,17 +15,13 @@ impl LogContext {
         Self(ContextProperties::new())
     }
 
-    pub fn with_property(
-        mut self,
-        key: impl Into<StaticCowStr>,
-        value: impl Into<ContextValue>,
-    ) -> Self {
+    pub fn record(mut self, key: impl Into<StaticCowStr>, value: impl Into<ContextValue>) -> Self {
         let property = (key.into(), value.into());
         self.0.properties.push(property);
         self
     }
 
-    pub fn add_property(key: impl Into<StaticCowStr>, value: impl Into<ContextValue>) {
+    pub fn add_record(key: impl Into<StaticCowStr>, value: impl Into<ContextValue>) {
         let property = (key.into(), value.into());
 
         CONTEXT_STACK.with(|stack| {

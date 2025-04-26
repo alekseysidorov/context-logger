@@ -35,14 +35,17 @@ where
     #[derive(Debug, Serialize)]
     struct Entry<'a> {
         level: log::Level,
-        msg: String,
+        msg: &'a str,
+        thread_id: Option<&'a str>,
         #[serde(flatten)]
         kv: BTreeMap<log::kv::Key<'a>, log::kv::Value<'a>>,
     }
 
+    let thread = std::thread::current();
     let entry = Entry {
         level: record.level(),
-        msg: record.args().to_string(),
+        msg: &record.args().to_string(),
+        thread_id: thread.name(),
         kv: visitor.kv,
     };
 
@@ -71,11 +74,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     log::info!("Initialized context logger");
 
     // Create a new context with properties.
-    let log_context = LogContext::new().with_property("user_id", "12345");
+    let log_context = LogContext::new().record("user_id", "12345");
     let first_future = async move {
         log::info!("Logging in");
         // Create a nested context with additional properties
-        let log_context = LogContext::new().with_property(
+        let log_context = LogContext::new().record(
             "action",
             ContextValue::serde(Operation {
                 action: "login".to_string(),
@@ -95,10 +98,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .in_log_context(log_context);
 
     let log_context = LogContext::new()
-        .with_property("name", "Alice")
-        .with_property("age", 25)
-        .with_property("married", true)
-        .with_property("email", "alice@example.com");
+        .record("name", "Alice")
+        .record("age", 25)
+        .record("married", true)
+        .record("email", "alice@example.com");
     let second_future = async move {
         tokio::task::yield_now().await;
 
@@ -109,9 +112,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .in_log_context(log_context);
 
     let log_context = LogContext::new()
-        .with_property("name", "Bob")
-        .with_property("age", 30)
-        .with_property("email", "bob@example.com");
+        .record("name", "Bob")
+        .record("age", 30)
+        .record("email", "bob@example.com");
     let third_future = tokio::spawn(
         async move {
             tokio::task::yield_now().await;
@@ -119,7 +122,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             log::info!("Third future pending");
             tokio::time::sleep(Duration::from_millis(100)).await;
 
-            LogContext::add_property(
+            LogContext::add_record(
                 "operation",
                 ContextValue::serde(Operation {
                     action: "logout".to_owned(),
@@ -135,9 +138,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     res?;
 
     let context = LogContext::new()
-        .with_property("name", "Charlie")
-        .with_property("age", 35)
-        .with_property("email", "charlie@example.com");
+        .record("name", "Charlie")
+        .record("age", 35)
+        .record("email", "charlie@example.com");
 
     let _guard = context.enter();
 
