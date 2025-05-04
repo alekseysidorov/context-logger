@@ -24,6 +24,7 @@ where
 }
 
 #[pin_project]
+#[derive(Debug)]
 pub struct LogContextFuture<F> {
     #[pin]
     inner: F,
@@ -46,9 +47,4 @@ where
 
         result
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
 }

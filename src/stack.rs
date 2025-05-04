@@ -6,28 +6,6 @@ thread_local! {
     pub static CONTEXT_STACK: ContextStack = const { ContextStack::new() };
 }
 
-#[derive(Default, Debug)]
-pub struct ContextProperties {
-    pub properties: Vec<(StaticCowStr, ContextValue)>,
-}
-
-impl<'a> IntoIterator for &'a ContextProperties {
-    type Item = &'a (StaticCowStr, ContextValue);
-    type IntoIter = std::slice::Iter<'a, (StaticCowStr, ContextValue)>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.properties.iter()
-    }
-}
-
-impl ContextProperties {
-    pub const fn new() -> Self {
-        ContextProperties {
-            properties: Vec::new(),
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct ContextStack {
     inner: RefCell<Vec<ContextProperties>>,
@@ -38,6 +16,14 @@ impl ContextStack {
         ContextStack {
             inner: RefCell::new(Vec::new()),
         }
+    }
+
+    pub fn len(&self) -> usize {
+        self.inner.borrow().len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.inner.borrow().is_empty()
     }
 
     pub fn push(&self, properties: ContextProperties) {
@@ -70,5 +56,27 @@ impl ContextStack {
 impl Default for ContextStack {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[derive(Default, Debug)]
+pub struct ContextProperties {
+    pub properties: Vec<(StaticCowStr, ContextValue)>,
+}
+
+impl<'a> IntoIterator for &'a ContextProperties {
+    type Item = &'a (StaticCowStr, ContextValue);
+    type IntoIter = std::slice::Iter<'a, (StaticCowStr, ContextValue)>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.properties.iter()
+    }
+}
+
+impl ContextProperties {
+    pub const fn new() -> Self {
+        ContextProperties {
+            properties: Vec::new(),
+        }
     }
 }
