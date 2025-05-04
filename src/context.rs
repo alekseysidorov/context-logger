@@ -1,14 +1,9 @@
-use std::{pin::Pin, task::Poll};
+use crate::{
+    ContextValue, StaticCowStr,
+    stack::{CONTEXT_STACK, ContextProperties},
+};
 
-use pin_project::pin_project;
-
-use crate::{properties::ContextProperties, stack::ContextStack, ContextValue, StaticCowStr};
-
-thread_local! {
-    pub static CONTEXT_STACK: ContextStack = const { ContextStack::new() };
-}
-
-pub struct LogContext(ContextProperties);
+pub struct LogContext(pub(crate) ContextProperties);
 
 impl LogContext {
     pub const fn new() -> Self {
@@ -55,46 +50,5 @@ impl LogContextGuard {
 impl Drop for LogContextGuard {
     fn drop(&mut self) {
         CONTEXT_STACK.with(|stack| stack.pop());
-    }
-}
-
-#[pin_project]
-pub struct LogContextFuture<F> {
-    #[pin]
-    inner: F,
-    properties: Option<ContextProperties>,
-}
-
-impl<F> Future for LogContextFuture<F>
-where
-    F: Future,
-{
-    type Output = F::Output;
-
-    fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
-        let this = self.project();
-
-        CONTEXT_STACK.with(|stack| stack.push(this.properties.take().unwrap()));
-        let result = this.inner.poll(cx);
-        this.properties
-            .replace(CONTEXT_STACK.with(|stack| stack.pop().unwrap()));
-
-        result
-    }
-}
-
-pub trait FutureExt: Future + Sized {
-    fn in_log_context(self, context: LogContext) -> LogContextFuture<Self>;
-}
-
-impl<F> FutureExt for F
-where
-    F: Future,
-{
-    fn in_log_context(self, context: LogContext) -> LogContextFuture<Self> {
-        LogContextFuture {
-            inner: self,
-            properties: Some(context.0),
-        }
     }
 }

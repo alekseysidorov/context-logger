@@ -1,7 +1,34 @@
 use std::cell::{Ref, RefCell, RefMut};
 
-use crate::properties::ContextProperties;
+use crate::{ContextValue, StaticCowStr};
 
+thread_local! {
+    pub static CONTEXT_STACK: ContextStack = const { ContextStack::new() };
+}
+
+#[derive(Default, Debug)]
+pub struct ContextProperties {
+    pub properties: Vec<(StaticCowStr, ContextValue)>,
+}
+
+impl<'a> IntoIterator for &'a ContextProperties {
+    type Item = &'a (StaticCowStr, ContextValue);
+    type IntoIter = std::slice::Iter<'a, (StaticCowStr, ContextValue)>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.properties.iter()
+    }
+}
+
+impl ContextProperties {
+    pub const fn new() -> Self {
+        ContextProperties {
+            properties: Vec::new(),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct ContextStack {
     inner: RefCell<Vec<ContextProperties>>,
 }
@@ -37,5 +64,11 @@ impl ContextStack {
         } else {
             Some(RefMut::map(inner, |inner| inner.last_mut().unwrap()))
         }
+    }
+}
+
+impl Default for ContextStack {
+    fn default() -> Self {
+        Self::new()
     }
 }

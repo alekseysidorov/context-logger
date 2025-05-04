@@ -112,3 +112,15 @@ impl_context_value_from_primitive!(
     i128 => I128,
     u128 => U128
 );
+
+impl std::fmt::Display for ContextValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.as_log_value().fmt(f)
+    }
+}
+
+impl std::fmt::Debug for ContextValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.as_log_value().fmt(f)
+    }
+}
