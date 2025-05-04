@@ -9,6 +9,15 @@ struct Operation {
     name: String,
 }
 
+#[derive(Debug, Serialize)]
+struct LogEntry<'a> {
+    level: log::Level,
+    msg: &'a str,
+    thread_id: Option<&'a str>,
+    #[serde(flatten)]
+    kv: BTreeMap<log::kv::Key<'a>, log::kv::Value<'a>>,
+}
+
 fn write_json<F>(f: &mut F, record: &log::Record) -> std::io::Result<()>
 where
     F: std::io::Write,
@@ -32,17 +41,8 @@ where
     let mut visitor = Visitor::default();
     record.key_values().visit(&mut visitor).unwrap();
 
-    #[derive(Debug, Serialize)]
-    struct Entry<'a> {
-        level: log::Level,
-        msg: &'a str,
-        thread_id: Option<&'a str>,
-        #[serde(flatten)]
-        kv: BTreeMap<log::kv::Key<'a>, log::kv::Value<'a>>,
-    }
-
     let thread = std::thread::current();
-    let entry = Entry {
+    let entry = LogEntry {
         level: record.level(),
         msg: &record.args().to_string(),
         thread_id: thread.name(),
@@ -134,7 +134,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .in_log_context(log_context),
     );
 
-    let (_, _, res) = tokio::join!(first_future, second_future, third_future);
+    let ((), (), res) = tokio::join!(first_future, second_future, third_future);
     res?;
 
     let context = LogContext::new()

@@ -18,14 +18,6 @@ impl ContextStack {
         }
     }
 
-    pub fn len(&self) -> usize {
-        self.inner.borrow().len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.inner.borrow().is_empty()
-    }
-
     pub fn push(&self, properties: ContextProperties) {
         self.inner.borrow_mut().push(properties);
     }
@@ -78,5 +70,16 @@ impl ContextProperties {
         ContextProperties {
             properties: Vec::new(),
         }
+    }
+}
+
+#[cfg(test)]
+impl ContextStack {
+    pub fn len(&self) -> usize {
+        self.inner.borrow().len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.inner.borrow().is_empty()
     }
 }

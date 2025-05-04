@@ -1,3 +1,22 @@
+/// Represents a type of value that can be stored in the log context.
+///
+/// The `ContextValue` type is a flexible container designed to hold various kinds of data
+/// that can be associated with a log entry. It supports primitive types, strings, and
+/// more complex types such as those implementing [`std::fmt::Debug`], [`std::fmt::Display`],
+/// [`std::error::Error`], or `serde::Serialize`.
+///
+/// This allows for rich and structured logging, enabling developers to attach meaningful
+/// context to log messages.
+///
+/// # Examples
+///
+/// ```
+/// use context_logger::ContextValue;
+///
+/// let value = ContextValue::display("example string");
+/// let number = ContextValue::from(42);
+/// let debug_value = ContextValue::debug(vec![1, 2, 3]);
+/// ```
 pub struct ContextValue(ContextValueInner);
 
 enum ContextValueInner {
@@ -23,10 +42,13 @@ impl From<ContextValueInner> for ContextValue {
 }
 
 impl ContextValue {
+    /// Creates a null context value.
+    #[allow(clippy::must_use_candidate)]
     pub fn null() -> Self {
         ContextValueInner::Null.into()
     }
 
+    /// Creates a context value from a [`serde::Serialize`].
     pub fn serde<S>(value: S) -> Self
     where
         S: serde::Serialize + Send + Sync + 'static,
@@ -35,6 +57,7 @@ impl ContextValue {
         ContextValueInner::Serde(value).into()
     }
 
+    /// Creates a context value from a [`std::fmt::Display`].
     pub fn display<T>(value: T) -> Self
     where
         T: std::fmt::Display + Send + Sync + 'static,
@@ -43,6 +66,7 @@ impl ContextValue {
         ContextValueInner::Display(value).into()
     }
 
+    /// Creates a context value from a [`std::fmt::Debug`].
     pub fn debug<T>(value: T) -> Self
     where
         T: std::fmt::Debug + Send + Sync + 'static,
@@ -51,6 +75,7 @@ impl ContextValue {
         ContextValueInner::Debug(value).into()
     }
 
+    /// Creates a context value from a [`std::error::Error`].
     pub fn error<T>(value: T) -> Self
     where
         T: std::error::Error + Send + Sync + 'static,
@@ -59,6 +84,8 @@ impl ContextValue {
         ContextValueInner::Error(value).into()
     }
 
+    /// Represents a context value that can be used with the [`log`] crate.
+    #[must_use]
     pub fn as_log_value(&self) -> log::kv::Value<'_> {
         match &self.0 {
             ContextValueInner::Null => log::kv::Value::null(),

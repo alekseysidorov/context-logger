@@ -3,8 +3,8 @@ use std::task::Poll;
 use pin_project::pin_project;
 
 use crate::{
+    stack::{ContextProperties, CONTEXT_STACK},
     LogContext,
-    stack::{CONTEXT_STACK, ContextProperties},
 };
 
 pub trait FutureExt: Future + Sized {

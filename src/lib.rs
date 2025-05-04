@@ -1,14 +1,11 @@
 use std::borrow::Cow;
 
-pub use self::{
-    context::{LogContext, LogContextGuard},
-    future::{FutureExt, LogContextFuture},
-    stack::CONTEXT_STACK,
-    value::ContextValue,
-};
+use self::stack::CONTEXT_STACK;
+pub use self::{context::LogContext, future::FutureExt, value::ContextValue};
 
 mod context;
-mod future;
+pub mod future;
+pub mod guard;
 mod stack;
 mod value;
 
