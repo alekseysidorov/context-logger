@@ -1,7 +1,7 @@
 use crate::{
-    guard::LogContextGuard,
-    stack::{ContextProperties, CONTEXT_STACK},
     ContextValue, StaticCowStr,
+    guard::LogContextGuard,
+    stack::{CONTEXT_STACK, ContextProperties},
 };
 
 #[derive(Debug)]
@@ -31,7 +31,7 @@ impl LogContext {
     }
 
     #[must_use]
-    pub fn enter(self) -> LogContextGuard {
+    pub fn enter<'a>(self) -> LogContextGuard<'a> {
         LogContextGuard::enter(self)
     }
 }

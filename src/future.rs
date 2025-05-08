@@ -3,8 +3,8 @@ use std::task::Poll;
 use pin_project::pin_project;
 
 use crate::{
+    stack::{ContextProperties, CONTEXT_STACK},
     LogContext,
-    stack::{CONTEXT_STACK, ContextProperties},
 };
 
 pub trait FutureExt: Future + Sized {
@@ -53,9 +53,8 @@ where
 mod tests {
     use pretty_assertions::assert_eq;
 
-    use crate::{ContextValue, LogContext, stack::CONTEXT_STACK};
-
     use super::FutureExt;
+    use crate::{stack::CONTEXT_STACK, ContextValue, LogContext};
 
     fn get_property(idx: usize) -> Option<String> {
         CONTEXT_STACK.with(|stack| {

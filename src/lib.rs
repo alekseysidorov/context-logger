@@ -11,11 +11,42 @@ mod value;
 
 type StaticCowStr = Cow<'static, str>;
 
+/// A logger wrapper that enhances log records with contextual properties.
+///
+/// `ContextLogger` wraps an existing logging implementation and adds additional
+/// context properties to log records. These context properties are taken from the
+/// current context stack, which is managed by the [`LogContext`] type.
+///
+/// # Example
+///
+/// ```
+/// use log::{info, LevelFilter};
+/// use context_logger::{ContextLogger, LogContext};
+///
+/// // Create a logger with context support
+/// let logger = ContextLogger::new(env_logger::Builder::new().build());
+/// logger.init(LevelFilter::Info);
+///
+/// // Create a context with properties
+/// let ctx = LogContext::new()
+///     .record("request_id", "req-123")
+///     .record("user_id", 42);
+///
+/// // Use the context while logging
+/// let _guard = ctx.enter();
+/// info!("Processing request"); // Will include request_id and user_id properties
+/// ```
+///
+/// See [`LogContext`] for more information on how to create and manage context properties.
 pub struct ContextLogger {
     inner: Box<dyn log::Log>,
 }
 
 impl ContextLogger {
+    /// Creates a new [`ContextLogger`] that wraps the given logging implementation.
+    ///
+    /// The inner logger will receive log records enhanced with context properties
+    /// from the current context stack.
     pub fn new<L>(inner: L) -> Self
     where
         L: log::Log + 'static,
@@ -23,6 +54,30 @@ impl ContextLogger {
         Self {
             inner: Box::new(inner),
         }
+    }
+
+    /// Initialized the global logger with the context logger.
+    ///
+    /// This should be called early in the execution of a Rust program. Any log events that occur before initialization will be ignored.
+    ///
+    /// # Panics
+    ///
+    /// Returns an error if a logger has already been set.
+    pub fn init(self, max_level: log::LevelFilter) {
+        self.try_init(max_level)
+            .expect("ContextLogger::init should not be called after logger initialization");
+    }
+
+    /// Initialized the global logger with the context logger.
+    ///
+    /// This should be called early in the execution of a Rust program. Any log events that occur before initialization will be ignored.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a logger has already been set.
+    pub fn try_init(self, max_level: log::LevelFilter) -> Result<(), log::SetLoggerError> {
+        log::set_max_level(max_level);
+        log::set_boxed_logger(self.inner)
     }
 }
 

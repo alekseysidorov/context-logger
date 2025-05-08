@@ -12,11 +12,11 @@ serde = "1"
 
 [dev-dependencies]
 env_logger = { version = "0.11", features = ["kv"] }
+futures-util = "0.3"
 pretty_assertions = "1.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1.0"
-tokio = { version = "1.44", features = ["rt-multi-thread", "macros", "time"] }
-futures-util = "0.3"
+tokio = { version = "1.45", features = ["rt-multi-thread", "macros", "time"] }
 
 [lints.rust]
 missing_debug_implementations = "warn"

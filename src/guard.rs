@@ -1,20 +1,50 @@
+//! A current logging context guard.
+
+use std::marker::PhantomData;
+
 use crate::{
-    stack::{ContextStack, CONTEXT_STACK},
     LogContext,
+    stack::{CONTEXT_STACK, ContextStack},
 };
 
+/// A guard representing a current logging context in the context stack.
+///
+/// When the guard is dropped, the context is automatically removed from the stack.
+/// This is returned by the [`LogContext::enter`] method.
+///
+/// # Examples
+///
+/// ```
+/// use context_logger::LogContext;
+///
+/// // Create a context with some data
+/// let context = LogContext::new().record("user_id", 123);
+///
+/// // Enter the context (pushes to stack)
+/// let guard = context.enter();
+///
+/// // Log operations here will have access to the context
+/// // ...
+///
+/// // When `guard` goes out of scope, the context is automatically removed
+/// ```
 #[non_exhaustive]
 #[derive(Debug)]
-pub struct LogContextGuard {}
+pub struct LogContextGuard<'a> {
+    // Make this guard unsendable.
+    _marker: PhantomData<&'a *mut ()>,
+}
 
-impl LogContextGuard {
+impl LogContextGuard<'_> {
     pub(crate) fn enter(context: LogContext) -> Self {
         CONTEXT_STACK.with(|stack| stack.push(context.0));
-        Self {}
+        Self {
+            _marker: PhantomData,
+        }
     }
 }
 
-impl Drop for LogContextGuard {
+impl Drop for LogContextGuard<'_> {
     fn drop(&mut self) {
         CONTEXT_STACK.with(ContextStack::pop);
     }
@@ -92,9 +122,13 @@ mod tests {
 
     #[test]
     fn test_log_context_multithread() {
+        let local_context = LogContext::new().record("simple_record", "main");
+        let local_guard = local_context.enter();
+
         let first_thread_handle = std::thread::spawn(|| {
             let inner_context = LogContext::new().record("simple_record", "first_thread");
             let inner_guard = inner_context.enter();
+
             // Test log context after inner guard is entered.
             assert_eq!(CONTEXT_STACK.with(ContextStack::len), 1);
             CONTEXT_STACK.with(|stack| {
@@ -121,5 +155,12 @@ mod tests {
 
         first_thread_handle.join().unwrap();
         second_thread_handle.join().unwrap();
+
+        CONTEXT_STACK.with(|stack| {
+            let property = &stack.top().unwrap().properties[0];
+            assert_eq!(property.0, "simple_record");
+            assert_eq!(property.1.to_string(), "main");
+        });
+        drop(local_guard);
     }
 }
