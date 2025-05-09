@@ -1,4 +1,9 @@
-//! A current logging context guard.
+//! Provides RAII guards for safely managing the logging context stack.
+//!
+//! This module contains the [`LogContextGuard`] type, which is responsible for
+//! managing the lifecycle of a logging context. When a guard is created, it adds
+//! the context to the thread-local stack, and when the guard is dropped, it
+//! automatically removes the context.
 
 use std::marker::PhantomData;
 
@@ -7,15 +12,20 @@ use crate::{
     stack::{CONTEXT_STACK, ContextStack},
 };
 
-/// A guard representing a current logging context in the context stack.
+/// A RAII guard that manages the lifecycle of a logging context in the context stack.
 ///
-/// When the guard is dropped, the context is automatically removed from the stack.
-/// This is returned by the [`LogContext::enter`] method.
+/// `LogContextGuard` provides automatic cleanup of logging contexts using Rust's
+/// ownership system. When a guard is dropped (goes out of scope), the associated
+/// context is automatically removed from the stack.
+///
+/// This guard is created by the [`LogContext::enter`] method and should not be
+/// constructed directly.
 ///
 /// # Examples
 ///
 /// ```
 /// use context_logger::LogContext;
+/// use log::info;
 ///
 /// // Create a context with some data
 /// let context = LogContext::new().record("user_id", 123);
@@ -24,10 +34,16 @@ use crate::{
 /// let guard = context.enter();
 ///
 /// // Log operations here will have access to the context
-/// // ...
+/// info!("Processing data for user");
 ///
 /// // When `guard` goes out of scope, the context is automatically removed
 /// ```
+///
+/// # Thread Safety
+///
+/// The guard is intentionally not `Send` to ensure that contexts are only
+/// used on the thread where they were created. For propagating context across
+/// thread boundaries, use thread-specific contexts.
 #[non_exhaustive]
 #[derive(Debug)]
 pub struct LogContextGuard<'a> {

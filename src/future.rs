@@ -3,11 +3,46 @@ use std::task::Poll;
 use pin_project::pin_project;
 
 use crate::{
-    stack::{ContextProperties, CONTEXT_STACK},
     LogContext,
+    stack::{CONTEXT_STACK, ContextProperties},
 };
 
+/// Extension trait for futures to propagate contextual logging information.
+///
+/// This trait adds the ability to attach a [`LogContext`] to any `Future`,
+/// ensuring that logs emitted during the future's execution will include
+/// the context properties, even when the future is polled across different
+/// tasks or thread pool executors.
+///
+/// # Examples
+///
+/// ```
+/// use context_logger::{LogContext, FutureExt};
+/// use log::info;
+///
+/// async fn process_user_data(user_id: u64) {
+///     // Create a context with user information
+///     let context = LogContext::new()
+///         .record("user_id", user_id)
+///         .record("operation", "process_data");
+///
+///     async {
+///         info!("Starting user data processing"); // Will include context
+///         
+///         // Do some async work...
+///         
+///         info!("User data processing complete"); // Still includes context
+///     }
+///     .in_log_context(context)
+///     .await;
+/// }
+/// ```
 pub trait FutureExt: Future + Sized {
+    /// Attaches a log context to this future.
+    ///
+    /// When the resulting future is polled, the context will be active,
+    /// ensuring that any logging performed during execution will include
+    /// the context properties.
     fn in_log_context(self, context: LogContext) -> LogContextFuture<Self>;
 }
 
@@ -23,6 +58,11 @@ where
     }
 }
 
+/// A future with an attached logging context.
+///
+/// This type is created by the [`in_log_context`](FutureExt::in_log_context)
+/// method on the [`FutureExt`] trait. It wraps the original future and
+/// ensures that the log context is active during each poll of the future.
 #[pin_project]
 #[derive(Debug)]
 pub struct LogContextFuture<F> {
@@ -54,7 +94,7 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::FutureExt;
-    use crate::{stack::CONTEXT_STACK, ContextValue, LogContext};
+    use crate::{ContextValue, LogContext, stack::CONTEXT_STACK};
 
     fn get_property(idx: usize) -> Option<String> {
         CONTEXT_STACK.with(|stack| {
