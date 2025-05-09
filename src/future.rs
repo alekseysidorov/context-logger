@@ -52,12 +52,13 @@ where
 
 #[cfg(test)]
 mod tests {
-    use futures_util::FutureExt as _;
-    use pretty_assertions::assert_eq;
     use std::panic::AssertUnwindSafe;
 
+    use futures_util::FutureExt as _;
+    use pretty_assertions::assert_eq;
+
     use super::FutureExt;
-    use crate::{ContextValue, LogContext, stack::CONTEXT_STACK};
+    use crate::{stack::CONTEXT_STACK, ContextValue, LogContext};
 
     fn get_property(idx: usize) -> Option<String> {
         CONTEXT_STACK.with(|stack| {

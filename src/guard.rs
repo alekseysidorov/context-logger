@@ -3,8 +3,8 @@
 use std::marker::PhantomData;
 
 use crate::{
+    stack::{ContextStack, CONTEXT_STACK},
     LogContext,
-    stack::{CONTEXT_STACK, ContextStack},
 };
 
 /// A guard representing a current logging context in the context stack.
