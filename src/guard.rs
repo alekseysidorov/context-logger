@@ -42,6 +42,17 @@ impl LogContextGuard<'_> {
             _marker: PhantomData,
         }
     }
+
+    pub(crate) fn exit(self) -> LogContext {
+        // We need to prevent the destructor from being called
+        // because we're manually managing the context stack here.
+        std::mem::forget(self);
+
+        let properties = CONTEXT_STACK
+            .with(ContextStack::pop)
+            .expect("There is a bug in log context guard, context should be exists");
+        LogContext(properties)
+    }
 }
 
 impl Drop for LogContextGuard<'_> {

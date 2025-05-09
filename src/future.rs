@@ -2,10 +2,7 @@ use std::task::Poll;
 
 use pin_project::pin_project;
 
-use crate::{
-    LogContext,
-    stack::{CONTEXT_STACK, ContextProperties},
-};
+use crate::LogContext;
 
 pub trait FutureExt: Future + Sized {
     fn in_log_context(self, context: LogContext) -> LogContextFuture<Self>;
@@ -18,7 +15,7 @@ where
     fn in_log_context(self, context: LogContext) -> LogContextFuture<Self> {
         LogContextFuture {
             inner: self,
-            properties: Some(context.0),
+            log_context: Some(context),
         }
     }
 }
@@ -28,7 +25,7 @@ where
 pub struct LogContextFuture<F> {
     #[pin]
     inner: F,
-    properties: Option<ContextProperties>,
+    log_context: Option<LogContext>,
 }
 
 impl<F> Future for LogContextFuture<F>
@@ -40,10 +37,14 @@ where
     fn poll(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
 
-        CONTEXT_STACK.with(|stack| stack.push(this.properties.take().unwrap()));
+        let log_context = this
+            .log_context
+            .take()
+            .expect("An attempt to poll panicked future");
+
+        let guard = log_context.enter();
         let result = this.inner.poll(cx);
-        this.properties
-            .replace(CONTEXT_STACK.with(|stack| stack.pop().unwrap()));
+        this.log_context.replace(guard.exit());
 
         result
     }
@@ -51,7 +52,9 @@ where
 
 #[cfg(test)]
 mod tests {
+    use futures_util::FutureExt as _;
     use pretty_assertions::assert_eq;
+    use std::panic::AssertUnwindSafe;
 
     use super::FutureExt;
     use crate::{ContextValue, LogContext, stack::CONTEXT_STACK};
@@ -59,7 +62,6 @@ mod tests {
     fn get_property(idx: usize) -> Option<String> {
         CONTEXT_STACK.with(|stack| {
             let top = stack.top();
-            dbg!(&top);
             top.map(|properties| properties[idx].1.to_string())
         })
     }
@@ -96,6 +98,24 @@ mod tests {
         }
         .in_log_context(context)
         .await;
+
+        assert_eq!(get_property(0), None);
+    }
+
+    #[tokio::test]
+    async fn test_panicked_future() {
+        let context = LogContext::new().record("answer", 42);
+
+        AssertUnwindSafe(
+            async {
+                tokio::task::yield_now().await;
+                panic!("Goodbye cruel world");
+            }
+            .in_log_context(context),
+        )
+        .catch_unwind()
+        .await
+        .unwrap_err();
 
         assert_eq!(get_property(0), None);
     }
