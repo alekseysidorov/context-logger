@@ -97,7 +97,7 @@ impl log::Log for ContextLogger {
             if let Some(top) = stack.top() {
                 let extra_properties = ExtraProperties {
                     source: &record.key_values(),
-                    properties: &*top.properties,
+                    properties: &*top,
                 };
                 let new_record = record.to_builder().key_values(&extra_properties).build();
 

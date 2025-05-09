@@ -16,7 +16,7 @@ impl LogContext {
     #[must_use]
     pub fn record(mut self, key: impl Into<StaticCowStr>, value: impl Into<ContextValue>) -> Self {
         let property = (key.into(), value.into());
-        self.0.properties.push(property);
+        self.0.push(property);
         self
     }
 
@@ -25,7 +25,7 @@ impl LogContext {
 
         CONTEXT_STACK.with(|stack| {
             if let Some(mut top) = stack.top_mut() {
-                top.properties.push(property);
+                top.push(property);
             }
         });
     }
