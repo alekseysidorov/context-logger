@@ -1,10 +1,45 @@
+//! Future types.
+
 use std::task::Poll;
 
 use pin_project::pin_project;
 
 use crate::LogContext;
 
-pub trait FutureExt: Future + Sized {
+/// Extension trait for futures to propagate contextual logging information.
+///
+/// This traits adds ability to attach a [`LogContext`] for any [`Future`],
+/// ensuring that logs emitted during the future's execution will include
+/// the contextual properties even the future is polled across different threads.
+pub trait FutureExt: Sized + private::Sealed {
+    /// Attaches a log context to this future.
+    ///
+    /// The attached [context](LogContext) will be activated every time the instrumented
+    /// future is polled.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use context_logger::{LogContext, FutureExt};
+    /// use log::info;
+    ///
+    /// async fn process_user_data(user_id: u64) {
+    ///     // Create a context with user information
+    ///     let context = LogContext::new()
+    ///         .record("user_id", user_id)
+    ///         .record("operation", "process_data");
+    ///
+    ///     async {
+    ///         info!("Starting user data processing"); // Will include context
+    ///
+    ///         // Do some async work...
+    ///
+    ///         info!("User data processing complete"); // Still includes context
+    ///     }
+    ///     .in_log_context(context)
+    ///     .await;
+    /// }
+    /// ```
     fn in_log_context(self, context: LogContext) -> LogContextFuture<Self>;
 }
 
@@ -20,6 +55,13 @@ where
     }
 }
 
+/// A future with an attached logging context.
+///
+/// This type is created by the [`FutureExt::in_log_context`].
+///
+/// # Note
+///
+/// If the wrapped future will panic, the next `poll` invocation panic unconditionally.
 #[pin_project]
 #[derive(Debug)]
 pub struct LogContextFuture<F> {
@@ -48,6 +90,12 @@ where
 
         result
     }
+}
+
+mod private {
+    pub trait Sealed {}
+
+    impl<F: Future> Sealed for F {}
 }
 
 #[cfg(test)]
