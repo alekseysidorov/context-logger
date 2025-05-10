@@ -39,7 +39,7 @@ enum ContextValueInner {
 
 impl From<ContextValueInner> for ContextValue {
     fn from(inner: ContextValueInner) -> Self {
-        ContextValue(inner)
+        Self(inner)
     }
 }
 

@@ -26,7 +26,7 @@ pub struct ContextStack {
 impl ContextStack {
     /// Creates a new, empty context stack.
     pub const fn new() -> Self {
-        ContextStack {
+        Self {
             inner: RefCell::new(Vec::new()),
         }
     }
