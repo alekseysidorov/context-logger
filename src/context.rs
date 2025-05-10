@@ -1,9 +1,9 @@
 //! Context builder for structured logging.
 
 use crate::{
-    guard::LogContextGuard,
-    stack::{ContextProperties, CONTEXT_STACK},
     ContextValue, StaticCowStr,
+    guard::LogContextGuard,
+    stack::{CONTEXT_STACK, ContextProperties},
 };
 
 /// A contextual properties that can be attached to log records.

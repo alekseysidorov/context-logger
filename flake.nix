@@ -27,7 +27,7 @@
           fenix.overlays.default
           (final: prev: {
             rustToolchains = {
-              stable = prev.fenix.stable.defaultToolchain;
+              stable = prev.fenix.stable.completeToolchain;
               msrv = (prev.fenix.fromToolchainName msrv).defaultToolchain;
               nightly = (prev.fenix.complete.withComponents [ "rustfmt" ]);
             };

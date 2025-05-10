@@ -1,3 +1,5 @@
+//! Value types for the context logger.
+
 /// Represents a type of value that can be stored in the log context.
 ///
 /// The `ContextValue` type is a flexible container designed to hold various kinds of data
@@ -105,12 +107,6 @@ impl ContextValue {
     }
 }
 
-impl From<&str> for ContextValue {
-    fn from(value: &str) -> Self {
-        ContextValue(ContextValueInner::String(value.to_owned()))
-    }
-}
-
 macro_rules! impl_context_value_from_primitive {
     ($($ty:ty => $arm:ident),*) => {
         $(
@@ -126,6 +122,8 @@ macro_rules! impl_context_value_from_primitive {
 impl_context_value_from_primitive!(
     bool => Bool,
     char => Char,
+    &str => String,
+    std::borrow::Cow<'_, str> => String,
     String => String,
     i8 => I64,
     i16 => I64,

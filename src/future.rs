@@ -106,7 +106,7 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::FutureExt;
-    use crate::{stack::CONTEXT_STACK, ContextValue, LogContext};
+    use crate::{ContextValue, LogContext, stack::CONTEXT_STACK};
 
     fn get_property(idx: usize) -> Option<String> {
         CONTEXT_STACK.with(|stack| {
