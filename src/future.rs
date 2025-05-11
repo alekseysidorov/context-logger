@@ -8,9 +8,9 @@ use crate::LogContext;
 
 /// Extension trait for futures to propagate contextual logging information.
 ///
-/// This traits adds ability to attach a [`LogContext`] for any [`Future`],
+/// This trait adds ability to attach a [`LogContext`] for any [`Future`],
 /// ensuring that logs emitted during the future's execution will include
-/// the contextual properties even the future is polled across different threads.
+/// the contextual properties even if the future is polled across different threads.
 pub trait FutureExt: Sized + private::Sealed {
     /// Attaches a log context to this future.
     ///
@@ -61,7 +61,7 @@ where
 ///
 /// # Note
 ///
-/// If the wrapped future will panic, the next `poll` invocation panic unconditionally.
+/// If the wrapped future will panic, the next `poll` invocation will panic unconditionally.
 #[pin_project]
 #[derive(Debug)]
 pub struct LogContextFuture<F> {

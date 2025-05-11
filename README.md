@@ -8,7 +8,7 @@
 
 A lightweight, ergonomic library for adding structured context to your logs.
 
-`context-logger` enchances the standard Rust [`log`] crate ecosystem by allowing
+`context-logger` enhances the standard Rust [`log`] crate ecosystem by allowing
 you to attach rich contextual information to your log messages without changing
 your existing logging patterns.
 
@@ -36,7 +36,7 @@ use context_logger::{ContextLogger, LogContext};
 use log::info;
 
 fn main() {
-    // Create a some logger.
+    // Create a logger.
     let env_logger = env_logger::builder().build();
     let max_level = env_logger.filter();
     // Wrap it with ContextLogger to enable context propagation.

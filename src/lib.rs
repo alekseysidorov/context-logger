@@ -10,9 +10,9 @@
 //! - Allowing dynamic context updates.
 //! - Supporting nested contexts to build hierarchical relationships.
 //!
-//! This library provides a wrapper arount other exising logger implementations,
+//! This library provides a wrapper around other existing logger implementations,
 //! acting as a middleware layer that enriches log records with additional context before
-//! passing them to the underlying logger.It works with any logger that implements the
+//! passing them to the underlying logger. It works with any logger that implements the
 //! standard [`Log`](log::Log) trait, making it compatible with popular logging frameworks like
 //! [`env_logger`], [`log4rs`] and others.
 //!
@@ -52,7 +52,7 @@ type StaticCowStr = Cow<'static, str>;
 /// use log::{info, LevelFilter};
 /// use context_logger::{ContextLogger, LogContext};
 ///
-/// // Create a some logger.
+/// // Create a logger.
 /// let env_logger = env_logger::builder().build();
 /// let max_level = env_logger.filter();
 /// // Wrap it with ContextLogger to enable context propagation.
@@ -89,19 +89,19 @@ impl ContextLogger {
         }
     }
 
-    /// Initialized the global logger with the context logger.
+    /// Initializes the global logger with the context logger.
     ///
     /// This should be called early in the execution of a Rust program. Any log events that occur before initialization will be ignored.
     ///
     /// # Panics
     ///
-    /// Returns an error if a logger has already been set.
+    /// Panics if a logger has already been set.
     pub fn init(self, max_level: log::LevelFilter) {
         self.try_init(max_level)
             .expect("ContextLogger::init should not be called after logger initialization");
     }
 
-    /// Initialized the global logger with the context logger.
+    /// Initializes the global logger with the context logger.
     ///
     /// This should be called early in the execution of a Rust program. Any log events that occur before initialization will be ignored.
     ///
