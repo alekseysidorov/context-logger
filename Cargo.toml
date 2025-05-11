@@ -1,7 +1,15 @@
 [package]
 name = "context-logger"
+description = "A lightweight, ergonomic library for adding structured context to your logs"
+categories = ["development-tools::debugging", "asynchronous"]
+keywords = ["log", "logging", "context-logging", "structured-logging"]
+license = "MIT OR Apache-2.0"
+documentation = "https://docs.rs/crate/context-logger"
+repository = "https://github.com/alekseysidorov/context-logger"
+
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.85"
 
 [dependencies]
 erased-serde = "0.4.6"
@@ -23,9 +31,9 @@ missing_debug_implementations = "warn"
 unsafe_code = "forbid"
 
 [lints.clippy]
-missing_errors_doc = "allow"
+missing_errors_doc = "warn"
 missing_panics_doc = "warn"
-module_name_repetitions = "allow"
+nursery = { level = "warn", priority = -1 }
 pedantic = { level = "warn", priority = -1 }
 
 [lints.rustdoc]
