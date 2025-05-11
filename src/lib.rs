@@ -143,6 +143,8 @@ impl log::Log for ContextLogger {
         if let Err(err) = error {
             // If the context stack is not available, log the original record.
             self.inner.log(record);
+            // We can't use `log::error!` here because we are in the middle of logging and
+            // this invocation becomes recursive.
             eprintln!("Error accessing context stack: {err}");
         }
     }
