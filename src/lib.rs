@@ -1,3 +1,32 @@
+//! # Overview
+//!
+#![doc = include_utils::include_md!("README.md:description")]
+//!
+//! Modern applications often need rich, structured context in logs to provide
+//! insight into runtime behavior. This library simplifies the process by:
+//!
+//! - Adding structured context to logs without modifying the existing logging statements.
+//! - Propagating log context across async boundaries.
+//! - Allowing dynamic context updates.
+//! - Supporting nested contexts to build hierarchical relationships.
+//!
+//! This library provides a wrapper arount other exising logger implementations,
+//! acting as a middleware layer that enriches log records with additional context before
+//! passing them to the underlying logger.It works with any logger that implements the
+//! standard [`Log`](log::Log) trait, making it compatible with popular logging frameworks like
+//! [`env_logger`], [`log4rs`] and others.
+//!
+//! ## Basic example
+//!
+#![doc = include_utils::include_md!("README.md:basic_example")]
+//!
+//! ## Async Context Propagation
+//!
+#![doc = include_utils::include_md!("README.md:async_example")]
+//!
+//! [`env_logger`]: https://docs.rs/env_logger/latest/env_logger
+//! [`log4rs`]: https://docs.rs/log4rs/latest/log4rs
+
 use std::borrow::Cow;
 
 use self::stack::CONTEXT_STACK;
@@ -23,9 +52,13 @@ type StaticCowStr = Cow<'static, str>;
 /// use log::{info, LevelFilter};
 /// use context_logger::{ContextLogger, LogContext};
 ///
-/// // Create a logger with context support
-/// let logger = ContextLogger::new(env_logger::Builder::new().build());
-/// logger.init(LevelFilter::Info);
+/// // Create a some logger.
+/// let env_logger = env_logger::builder().build();
+/// let max_level = env_logger.filter();
+/// // Wrap it with ContextLogger to enable context propagation.
+/// let context_logger = ContextLogger::new(env_logger);
+/// // Initialize the resulting logger.
+/// context_logger.init(max_level);
 ///
 /// // Create a context with properties
 /// let ctx = LogContext::new()
@@ -93,7 +126,7 @@ impl log::Log for ContextLogger {
     }
 
     fn log(&self, record: &log::Record) {
-        let _ = CONTEXT_STACK.try_with(|stack| {
+        let error = CONTEXT_STACK.try_with(|stack| {
             if let Some(top) = stack.top() {
                 let extra_properties = ExtraProperties {
                     source: &record.key_values(),
@@ -106,6 +139,12 @@ impl log::Log for ContextLogger {
                 self.inner.log(record);
             }
         });
+
+        if let Err(err) = error {
+            // If the context stack is not available, log the original record.
+            self.inner.log(record);
+            eprintln!("Error accessing context stack: {err}");
+        }
     }
 
     fn flush(&self) {

@@ -1,5 +1,6 @@
 [package]
 name = "context-logger"
+description = "A lightweight, ergonomic library for adding structured context to your logs"
 version = "0.1.0"
 edition = "2024"
 
