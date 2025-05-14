@@ -8,6 +8,11 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.1.1] - 2025.05.14
+
+- Fixed `ContextLogger::try_init` method where the wrong object was being passed
+  to `log::set_boxed_logger` (issue #3)
+
 ## [0.1.0] - 2025.05.11
 
 - Initial release of `context_logger` crate.
