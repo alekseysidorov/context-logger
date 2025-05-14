@@ -110,7 +110,7 @@ impl ContextLogger {
     /// Returns an error if a logger has already been set.
     pub fn try_init(self, max_level: log::LevelFilter) -> Result<(), log::SetLoggerError> {
         log::set_max_level(max_level);
-        log::set_boxed_logger(self.inner)
+        log::set_boxed_logger(Box::new(self))
     }
 }
 

@@ -61,8 +61,7 @@ fn try_init_logger() -> Result<(), Box<dyn std::error::Error>> {
     let level = env_logger.filter();
 
     let context_logger = ContextLogger::new(env_logger);
-    log::set_boxed_logger(Box::new(context_logger))?;
-    log::set_max_level(level);
+    context_logger.try_init(level)?;
 
     Ok(())
 }
