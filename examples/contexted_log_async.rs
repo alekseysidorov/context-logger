@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, time::Duration};
+use std::time::Duration;
 
 use context_logger::{ContextLogger, ContextValue, FutureExt, LogContext};
 use serde::Serialize;
@@ -9,58 +9,16 @@ struct Operation {
     name: String,
 }
 
-#[derive(Debug, Serialize)]
-struct LogEntry<'a> {
-    level: log::Level,
-    msg: &'a str,
-    thread_id: Option<&'a str>,
-    #[serde(flatten)]
-    kv: BTreeMap<log::kv::Key<'a>, log::kv::Value<'a>>,
-}
-
-fn write_json<F>(f: &mut F, record: &log::Record) -> std::io::Result<()>
-where
-    F: std::io::Write,
-{
-    #[derive(Default)]
-    struct Visitor<'a> {
-        kv: BTreeMap<log::kv::Key<'a>, log::kv::Value<'a>>,
-    }
-
-    impl<'a> log::kv::VisitSource<'a> for Visitor<'a> {
-        fn visit_pair(
-            &mut self,
-            key: log::kv::Key<'a>,
-            val: log::kv::Value<'a>,
-        ) -> Result<(), log::kv::Error> {
-            self.kv.insert(key, val);
-            Ok(())
-        }
-    }
-
-    let mut visitor = Visitor::default();
-    record.key_values().visit(&mut visitor).unwrap();
-
-    let thread = std::thread::current();
-    let entry = LogEntry {
-        level: record.level(),
-        msg: &record.args().to_string(),
-        thread_id: thread.name(),
-        kv: visitor.kv,
-    };
-
-    writeln!(f, "{}", serde_json::to_string(&entry).unwrap())
-}
-
 fn try_init_logger() -> Result<(), Box<dyn std::error::Error>> {
-    let env_logger = env_logger::builder()
-        .filter_level(log::LevelFilter::Info)
-        .format(write_json)
-        .target(env_logger::Target::Stdout)
-        .build();
-    let level = env_logger.filter();
+    let level = log::LevelFilter::Info;
 
-    let context_logger = ContextLogger::new(env_logger);
+    let logger = structured_logger::Builder::with_level(level.as_str())
+        .with_target_writer(
+            "*",
+            structured_logger::async_json::new_writer(tokio::io::stdout()),
+        )
+        .build();
+    let context_logger = ContextLogger::new(logger);
     context_logger.try_init(level)?;
 
     Ok(())

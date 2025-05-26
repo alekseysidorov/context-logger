@@ -39,6 +39,7 @@
         cargo-nextest
         openssl
         pkg-config
+        jq
       ]
       # Some additional libraries for the Darwin platform
       ++ lib.optionals stdenv.isDarwin [
