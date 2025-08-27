@@ -40,7 +40,9 @@ fn main() {
     let env_logger = env_logger::builder().build();
     let max_level = env_logger.filter();
     // Wrap it with ContextLogger to enable context propagation.
-    let context_logger = ContextLogger::new(env_logger);
+    let context_logger = ContextLogger::new(env_logger)
+        // Add version default record.
+        .default_record("version", "1.0.0");
     // Initialize the resulting logger.
     context_logger.init(max_level);   
 
@@ -53,7 +55,7 @@ fn main() {
     let _guard = ctx.enter();
     
     // Log with context automatically attached
-    info!("Processing request"); // Will include request_id=req-123 and user_id=42
+    info!("Processing request"); // Will include version=1.0.0 request_id=req-123 and user_id=42
 }
 ```
 

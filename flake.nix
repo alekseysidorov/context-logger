@@ -40,10 +40,6 @@
         openssl
         pkg-config
         jq
-      ]
-      # Some additional libraries for the Darwin platform
-      ++ lib.optionals stdenv.isDarwin [
-        darwin.apple_sdk.frameworks.SystemConfiguration
       ];
 
       # Eval the treefmt modules from ./treefmt.nix

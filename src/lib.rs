@@ -123,11 +123,34 @@ impl ContextLogger {
     /// the current context. They are defined when the logger is created and remain
     /// constant throughout the application's lifetime.
     ///
-    /// # Note
+    /// # Behavior with Duplicate Keys
     ///
-    /// [`LogContext`] records take precedence over default records. If a key in the context has the same name as a default record, the context value will override the default value.
+    /// When logging, default records are added first, followed by records from the current
+    /// context. If multiple records with the same key exist, the behavior depends on the
+    /// underlying logger implementation. In most implementations, later records with the
+    /// same key will typically replace earlier ones.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use log::{info, LevelFilter};
+    /// use context_logger::{ContextLogger, LogContext};
+    ///
+    /// // Create a logger with default records
+    /// let logger = ContextLogger::new(env_logger::builder().build())
+    ///     .default_record("service", "api")
+    ///     .default_record("version", "1.0.0");
+    /// // Initialize it
+    /// logger.init(LevelFilter::Info);
+    /// // Context records are added after default records
+    /// let _guard = LogContext::new()
+    ///     .record("request_id", "123")
+    ///     .enter();
+    ///
+    /// info!("Processing request"); // Will include service="api", version="1.0.0", request_id="123"
+    /// ```
     #[must_use]
-    pub fn with_default_record(
+    pub fn default_record(
         mut self,
         key: impl Into<StaticCowStr>,
         value: impl Into<ContextValue>,
@@ -192,11 +215,8 @@ where
         &'kvs self,
         visitor: &mut dyn log::kv::VisitSource<'kvs>,
     ) -> Result<(), log::kv::Error> {
-        // FIXME It's too tricky to chain iterators here without cloning the iterator.
-        for (key, value) in self.default_records {
-            visitor.visit_pair(log::kv::Key::from_str(key), value.as_log_value())?;
-        }
-        for (key, value) in self.context_records {
+        let all_records = self.default_records.into_iter().chain(self.context_records);
+        for (key, value) in all_records {
             visitor.visit_pair(log::kv::Key::from_str(key), value.as_log_value())?;
         }
         self.source.visit(visitor)

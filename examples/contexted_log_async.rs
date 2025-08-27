@@ -16,7 +16,7 @@ fn try_init_logger() -> Result<(), Box<dyn std::error::Error>> {
         .with_target_writer("*", structured_logger::json::new_writer(std::io::stdout()))
         .build();
     ContextLogger::new(logger)
-        .with_default_record("instance", "contexted_log_async")
+        .default_record("instance", "contexted_log_async")
         .try_init(level)?;
 
     Ok(())
