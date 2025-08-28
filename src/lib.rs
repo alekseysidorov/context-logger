@@ -179,11 +179,16 @@ impl log::Log for ContextLogger {
                     default_records: self.default_records.as_slice(),
                     context_records: top.as_slice(),
                 };
-                let new_record = record.to_builder().key_values(&extra_records).build();
-
-                self.inner.log(&new_record);
+                self.inner
+                    .log(&record.to_builder().key_values(&extra_records).build());
             } else {
-                self.inner.log(record);
+                let extra_records = ExtraRecords {
+                    source: &record.key_values(),
+                    default_records: self.default_records.as_slice(),
+                    context_records: &[],
+                };
+                self.inner
+                    .log(&record.to_builder().key_values(&extra_records).build());
             }
         });
 
