@@ -15,12 +15,12 @@ thread_local! {
     pub static CONTEXT_STACK: ContextStack = const { ContextStack::new() };
 }
 
-pub type ContextProperties = Vec<(StaticCowStr, ContextValue)>;
+pub type ContextRecords = Vec<(StaticCowStr, ContextValue)>;
 
 /// A stack of context properties.
 #[derive(Debug)]
 pub struct ContextStack {
-    inner: RefCell<Vec<ContextProperties>>,
+    inner: RefCell<Vec<ContextRecords>>,
 }
 
 impl ContextStack {
@@ -36,8 +36,8 @@ impl ContextStack {
     /// # Panics
     ///
     /// If the stack is already borrowed.
-    pub fn push(&self, properties: ContextProperties) {
-        self.inner.borrow_mut().push(properties);
+    pub fn push(&self, records: ContextRecords) {
+        self.inner.borrow_mut().push(records);
     }
 
     /// Pops the top set of context properties from the stack.
@@ -45,7 +45,7 @@ impl ContextStack {
     /// # Panics
     ///
     /// If the stack is already borrowed.
-    pub fn pop(&self) -> Option<ContextProperties> {
+    pub fn pop(&self) -> Option<ContextRecords> {
         self.inner.borrow_mut().pop()
     }
 
@@ -54,7 +54,7 @@ impl ContextStack {
     /// # Panics
     ///
     /// If the stack is already mutably borrowed.
-    pub fn top(&self) -> Option<Ref<ContextProperties>> {
+    pub fn top(&self) -> Option<Ref<ContextRecords>> {
         let inner = self.inner.borrow();
         if inner.is_empty() {
             None
@@ -68,7 +68,7 @@ impl ContextStack {
     /// # Panics
     ///
     /// If the stack is already borrowed.
-    pub fn top_mut(&self) -> Option<RefMut<ContextProperties>> {
+    pub fn top_mut(&self) -> Option<RefMut<ContextRecords>> {
         let inner = self.inner.borrow_mut();
         if inner.is_empty() {
             None

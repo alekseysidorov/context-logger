@@ -13,13 +13,11 @@ fn try_init_logger() -> Result<(), Box<dyn std::error::Error>> {
     let level = log::LevelFilter::Info;
 
     let logger = structured_logger::Builder::with_level(level.as_str())
-        .with_target_writer(
-            "*",
-            structured_logger::async_json::new_writer(tokio::io::stdout()),
-        )
+        .with_target_writer("*", structured_logger::json::new_writer(std::io::stdout()))
         .build();
-    let context_logger = ContextLogger::new(logger);
-    context_logger.try_init(level)?;
+    ContextLogger::new(logger)
+        .default_record("instance", "contexted_log_async")
+        .try_init(level)?;
 
     Ok(())
 }

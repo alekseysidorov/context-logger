@@ -3,7 +3,7 @@
 use crate::{
     ContextValue, StaticCowStr,
     guard::LogContextGuard,
-    stack::{CONTEXT_STACK, ContextProperties},
+    stack::{CONTEXT_STACK, ContextRecords},
 };
 
 /// A contextual properties that can be attached to log records.
@@ -11,13 +11,13 @@ use crate::{
 /// [`LogContext`] represents a set of key-value pairs that will be
 /// automatically added to log messages when the context is active.
 #[derive(Debug)]
-pub struct LogContext(pub(crate) ContextProperties);
+pub struct LogContext(pub(crate) ContextRecords);
 
 impl LogContext {
     /// Creates a new, empty context.
     #[must_use]
     pub const fn new() -> Self {
-        Self(ContextProperties::new())
+        Self(ContextRecords::new())
     }
 
     /// Adds property to this context.

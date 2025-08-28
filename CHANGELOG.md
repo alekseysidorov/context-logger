@@ -8,6 +8,11 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.1.2] - 2025.05.14
+
+- Added `default_record` method to `ContextLogger` that allows setting default
+  records which will be included in all log entries regardless of context
+
 ## [0.1.1] - 2025.05.14
 
 - Fixed `ContextLogger::try_init` method where the wrong object was being passed

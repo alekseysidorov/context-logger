@@ -29,6 +29,8 @@
 
 use std::borrow::Cow;
 
+use stack::ContextRecords;
+
 use self::stack::CONTEXT_STACK;
 pub use self::{context::LogContext, future::FutureExt, value::ContextValue};
 
@@ -72,6 +74,7 @@ type StaticCowStr = Cow<'static, str>;
 ///
 /// See [`LogContext`] for more information on how to create and manage context properties.
 pub struct ContextLogger {
+    default_records: ContextRecords,
     inner: Box<dyn log::Log>,
 }
 
@@ -85,6 +88,7 @@ impl ContextLogger {
         L: log::Log + 'static,
     {
         Self {
+            default_records: ContextRecords::new(),
             inner: Box::new(inner),
         }
     }
@@ -112,6 +116,48 @@ impl ContextLogger {
         log::set_max_level(max_level);
         log::set_boxed_logger(Box::new(self))
     }
+
+    /// Adds a default record that will be included in all log entries.
+    ///
+    /// Default records are automatically added to all log entries, regardless of
+    /// the current context. They are defined when the logger is created and remain
+    /// constant throughout the application's lifetime.
+    ///
+    /// # Behavior with Duplicate Keys
+    ///
+    /// When logging, default records are added first, followed by records from the current
+    /// context. If multiple records with the same key exist, the behavior depends on the
+    /// underlying logger implementation. In most implementations, later records with the
+    /// same key will typically replace earlier ones.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use log::{info, LevelFilter};
+    /// use context_logger::{ContextLogger, LogContext};
+    ///
+    /// // Create a logger with default records
+    /// let logger = ContextLogger::new(env_logger::builder().build())
+    ///     .default_record("service", "api")
+    ///     .default_record("version", "1.0.0");
+    /// // Initialize it
+    /// logger.init(LevelFilter::Info);
+    /// // Context records are added after default records
+    /// let _guard = LogContext::new()
+    ///     .record("request_id", "123")
+    ///     .enter();
+    ///
+    /// info!("Processing request"); // Will include service="api", version="1.0.0", request_id="123"
+    /// ```
+    #[must_use]
+    pub fn default_record(
+        mut self,
+        key: impl Into<StaticCowStr>,
+        value: impl Into<ContextValue>,
+    ) -> Self {
+        self.default_records.push((key.into(), value.into()));
+        self
+    }
 }
 
 impl std::fmt::Debug for ContextLogger {
@@ -128,11 +174,12 @@ impl log::Log for ContextLogger {
     fn log(&self, record: &log::Record) {
         let error = CONTEXT_STACK.try_with(|stack| {
             if let Some(top) = stack.top() {
-                let extra_properties = ExtraProperties {
+                let extra_records = ExtraRecords {
                     source: &record.key_values(),
-                    properties: &*top,
+                    default_records: self.default_records.as_slice(),
+                    context_records: top.as_slice(),
                 };
-                let new_record = record.to_builder().key_values(&extra_properties).build();
+                let new_record = record.to_builder().key_values(&extra_records).build();
 
                 self.inner.log(&new_record);
             } else {
@@ -154,12 +201,13 @@ impl log::Log for ContextLogger {
     }
 }
 
-struct ExtraProperties<'a, I> {
+struct ExtraRecords<'a, I> {
     source: &'a dyn log::kv::Source,
-    properties: I,
+    default_records: I,
+    context_records: I,
 }
 
-impl<'a, I> log::kv::Source for ExtraProperties<'a, I>
+impl<'a, I> log::kv::Source for ExtraRecords<'a, I>
 where
     I: IntoIterator<Item = &'a (StaticCowStr, ContextValue)> + Copy,
 {
@@ -167,7 +215,8 @@ where
         &'kvs self,
         visitor: &mut dyn log::kv::VisitSource<'kvs>,
     ) -> Result<(), log::kv::Error> {
-        for (key, value) in self.properties {
+        let all_records = self.default_records.into_iter().chain(self.context_records);
+        for (key, value) in all_records {
             visitor.visit_pair(log::kv::Key::from_str(key), value.as_log_value())?;
         }
         self.source.visit(visitor)
