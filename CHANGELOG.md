@@ -8,7 +8,11 @@ and this project adheres to
 
 ## [Unreleased]
 
-## [0.1.2] - 2025.05.14
+## [0.1.3] - 2025.08.29
+
+- Fixed a bug where default records weren't applied without an active context
+
+## [0.1.2] - 2025.08.28
 
 - Added `default_record` method to `ContextLogger` that allows setting default
   records which will be included in all log entries regardless of context
