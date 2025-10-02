@@ -54,7 +54,7 @@ impl ContextStack {
     /// # Panics
     ///
     /// If the stack is already mutably borrowed.
-    pub fn top(&self) -> Option<Ref<ContextRecords>> {
+    pub fn top(&self) -> Option<Ref<'_, ContextRecords>> {
         let inner = self.inner.borrow();
         if inner.is_empty() {
             None
@@ -68,7 +68,7 @@ impl ContextStack {
     /// # Panics
     ///
     /// If the stack is already borrowed.
-    pub fn top_mut(&self) -> Option<RefMut<ContextRecords>> {
+    pub fn top_mut(&self) -> Option<RefMut<'_, ContextRecords>> {
         let inner = self.inner.borrow_mut();
         if inner.is_empty() {
             None
