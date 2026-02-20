@@ -1,5 +1,28 @@
 //! Value types for the context logger.
 
+use std::sync::Arc;
+
+/// A sized, cloneable wrapper around `Arc<dyn erased_serde::Serialize>` that implements
+/// `serde::Serialize`. This is needed because `log::kv::Value::from_serde` requires `T: Sized`,
+/// but `dyn erased_serde::Serialize` is unsized.
+#[derive(Clone)]
+struct SerdeArc(Arc<dyn erased_serde::Serialize + Send + Sync + 'static>);
+
+impl SerdeArc {
+    fn new<T>(value: T) -> Self
+    where
+        T: serde::Serialize + Send + Sync + 'static,
+    {
+        Self(Arc::new(value))
+    }
+}
+
+impl serde::Serialize for SerdeArc {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        erased_serde::serialize(&*self.0, serializer)
+    }
+}
+
 /// Represents a type of value that can be stored in the log context.
 ///
 /// The `ContextValue` type is a flexible container designed to hold various kinds of data
@@ -19,8 +42,10 @@
 /// let number = ContextValue::from(42);
 /// let debug_value = ContextValue::debug(vec![1, 2, 3]);
 /// ```
+#[derive(Clone)]
 pub struct ContextValue(ContextValueInner);
 
+#[derive(Clone)]
 enum ContextValueInner {
     Null,
     String(String),
@@ -31,10 +56,10 @@ enum ContextValueInner {
     F64(f64),
     I128(i128),
     U128(u128),
-    Debug(Box<dyn std::fmt::Debug + Send + Sync + 'static>),
-    Display(Box<dyn std::fmt::Display + Send + Sync + 'static>),
-    Error(Box<dyn std::error::Error + Send + Sync + 'static>),
-    Serde(Box<dyn erased_serde::Serialize + Send + Sync + 'static>),
+    Debug(Arc<dyn std::fmt::Debug + Send + Sync + 'static>),
+    Display(Arc<dyn std::fmt::Display + Send + Sync + 'static>),
+    Error(Arc<dyn std::error::Error + Send + Sync + 'static>),
+    Serde(SerdeArc),
 }
 
 impl From<ContextValueInner> for ContextValue {
@@ -55,8 +80,7 @@ impl ContextValue {
     where
         S: serde::Serialize + Send + Sync + 'static,
     {
-        let value = Box::new(value);
-        ContextValueInner::Serde(value).into()
+        ContextValueInner::Serde(SerdeArc::new(value)).into()
     }
 
     /// Creates a context value from a [`std::fmt::Display`].
@@ -64,8 +88,7 @@ impl ContextValue {
     where
         T: std::fmt::Display + Send + Sync + 'static,
     {
-        let value = Box::new(value);
-        ContextValueInner::Display(value).into()
+        ContextValueInner::Display(Arc::new(value)).into()
     }
 
     /// Creates a context value from a [`std::fmt::Debug`].
@@ -73,8 +96,7 @@ impl ContextValue {
     where
         T: std::fmt::Debug + Send + Sync + 'static,
     {
-        let value = Box::new(value);
-        ContextValueInner::Debug(value).into()
+        ContextValueInner::Debug(Arc::new(value)).into()
     }
 
     /// Creates a context value from a [`std::error::Error`].
@@ -82,8 +104,7 @@ impl ContextValue {
     where
         T: std::error::Error + Send + Sync + 'static,
     {
-        let value = Box::new(value);
-        ContextValueInner::Error(value).into()
+        ContextValueInner::Error(Arc::new(value)).into()
     }
 
     /// Represents a context value that can be used with the [`log`] crate.
@@ -99,8 +120,8 @@ impl ContextValue {
             ContextValueInner::F64(f) => log::kv::Value::from(*f),
             ContextValueInner::I128(i) => log::kv::Value::from(*i),
             ContextValueInner::U128(u) => log::kv::Value::from(*u),
-            ContextValueInner::Display(value) => log::kv::Value::from_dyn_display(value),
-            ContextValueInner::Debug(value) => log::kv::Value::from_dyn_debug(value),
+            ContextValueInner::Display(value) => log::kv::Value::from_dyn_display(&**value),
+            ContextValueInner::Debug(value) => log::kv::Value::from_dyn_debug(&**value),
             ContextValueInner::Error(value) => log::kv::Value::from_dyn_error(&**value),
             ContextValueInner::Serde(value) => log::kv::Value::from_serde(value),
         }
@@ -133,6 +154,7 @@ impl_context_value_from_primitive!(
     u16 => U64,
     u32 => U64,
     u64 => U64,
+    f32 => F64,
     f64 => F64,
     i128 => I128,
     u128 => U128
