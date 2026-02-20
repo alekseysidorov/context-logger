@@ -8,6 +8,9 @@ and this project adheres to
 
 ## [Unreleased]
 
+- Implemented `Clone` for `ContextValue` and `LogContext`
+- Added `From<f32>` conversion for `ContextValue`
+
 ## [0.1.3] - 2025.08.29
 
 - Fixed a bug where default records weren't applied without an active context
