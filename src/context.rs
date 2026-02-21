@@ -10,7 +10,7 @@ use crate::{
 ///
 /// [`LogContext`] represents a set of key-value pairs that will be
 /// automatically added to log messages when the context is active.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LogContext(pub(crate) ContextRecords);
 
 impl LogContext {
