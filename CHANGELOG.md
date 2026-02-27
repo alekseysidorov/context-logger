@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.1.4] - 2026.02.28
+
 - Implemented `Clone` for `ContextValue` and `LogContext`
 - Added `From<f32>` conversion for `ContextValue`
 
