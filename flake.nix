@@ -1,30 +1,10 @@
-# Nix flake for context-logger development and CI
-#
-# Usage:
-#   nix flake check              - Run all checks (formatting, clippy, tests, docs)
-#   nix fmt                      - Format code
-#
-#   nix build .#check-clippy     - Run only clippy
-#   nix build .#check-tests      - Run only tests (no default features)
-#   nix build .#check-tests-all  - Run tests with all features
-#   nix build .#check-doc        - Check documentation builds
-#   nix build .#check-doc-tests  - Run doc tests
-#   nix build .#check-fmt        - Check formatting
-#
-#   nix run .#benchmarks         - Run benchmarks
-#   nix run .#check-semver       - Run semver compatibility checks (requires network)
-#   nix run .#git-install-hooks  - Install git hooks (pre-commit: fmt, pre-push: checks + semver)
-#
-#   nix develop                  - Enter development shell with stable Rust
-#   nix develop .#nightly        - Enter development shell with nightly Rust
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
     fenix.url = "github:nix-community/fenix/monthly";
     treefmt-nix.url = "github:numtide/treefmt-nix";
     flake-utils.url = "github:numtide/flake-utils";
-
-    rust-dev-flake.url = "github:alekseysidorov/rust-dev-flake/init";
+    rust-dev-flake.url = "github:alekseysidorov/rust-dev-flake";
   };
 
   outputs =
@@ -74,7 +54,7 @@
         };
 
         # Eval the treefmt configuration
-        treefmtConfig = {
+        treefmt = (treefmt-nix.lib.evalModule pkgs) {
           projectRootFile = "flake.nix";
 
           programs = {
@@ -88,14 +68,13 @@
             taplo.enable = true;
           };
         };
-        treefmt = (treefmt-nix.lib.evalModule pkgs treefmtConfig).config.build;
       in
       {
         # for `nix fmt`
-        formatter = treefmt.wrapper;
+        formatter = treefmt.config.build.wrapper;
         # for `nix flake check`
         checks = {
-          formatting = treefmt.check self;
+          formatting = treefmt.config.build.check self;
           tests = rustDev.mkCargoCheck "nextest" "--workspace --all-targets --no-default-features";
           tests-all-features = rustDev.mkCargoCheck "nextest" "--workspace --all-targets --all-features";
         };

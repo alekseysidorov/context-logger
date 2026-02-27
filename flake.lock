@@ -211,7 +211,6 @@
       },
       "original": {
         "owner": "alekseysidorov",
-        "ref": "init",
         "repo": "rust-dev-flake",
         "type": "github"
       }
