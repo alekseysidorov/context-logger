@@ -20,7 +20,7 @@ jobs:
           authToken: "${{ secrets.CACHIX_AUTH_TOKEN }}"
 
       - name: "Run semver compatibility checks"
-        run: nix run .#check-semver
+        run: nix run .#check-cargo-semver
       - name: "Run cargo publish compatibility checks"
         run: nix run .#check-cargo-publish
 
