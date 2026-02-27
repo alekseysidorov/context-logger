@@ -77,6 +77,9 @@
           formatting = treefmt.config.build.check self;
           tests = rustDev.mkCargoCheck "nextest" "--workspace --all-targets --no-default-features";
           tests-all-features = rustDev.mkCargoCheck "nextest" "--workspace --all-targets --all-features";
+          clippy = rustDev.mkCargoCheck "clippy" "--workspace --all-targets --all-features -- -D warnings";
+          doc = rustDev.mkCargoCheck "doc" "--workspace --all-features --no-deps";
+          doctest = rustDev.mkCargoCheck "test" "--doc --workspace --all-features";
         };
         # for `nix develop` and direnv
         devShells.default = pkgs.mkShell {
