@@ -3,24 +3,37 @@
 use crate::{
     ContextValue, StaticCowStr,
     guard::LogContextGuard,
-    stack::{CONTEXT_STACK, ContextRecords},
+    stack::{CONTEXT_STACK, ContextFrame},
 };
 
 /// A contextual properties that can be attached to log records.
 ///
 /// [`LogContext`] represents a set of key-value pairs that will be
 /// automatically added to log messages when the context is active.
+///
+/// Records come in two flavours:
+///
+/// - **Local** records (added via [`record`](Self::record)) are visible only
+///   while the context they belong to is the *active* context.  They do **not**
+///   propagate into nested contexts.
+/// - **Inherited** records (added via [`inherited_record`](Self::inherited_record))
+///   are visible in the current context *and* in every nested context that is
+///   activated while this context is on the stack.
 #[derive(Debug, Clone)]
-pub struct LogContext(pub(crate) ContextRecords);
+pub struct LogContext(pub(crate) ContextFrame);
 
 impl LogContext {
     /// Creates a new, empty context.
     #[must_use]
     pub const fn new() -> Self {
-        Self(ContextRecords::new())
+        Self(ContextFrame::new())
     }
 
-    /// Adds property to this context.
+    /// Adds a local property to this context.
+    ///
+    /// Local records are only visible while this context is the **current**
+    /// (innermost) active context.  They are not visible inside any nested
+    /// context.
     ///
     /// # Examples
     ///
@@ -34,12 +47,46 @@ impl LogContext {
     /// ```
     #[must_use]
     pub fn record(mut self, key: impl Into<StaticCowStr>, value: impl Into<ContextValue>) -> Self {
-        let property = (key.into(), value.into());
-        self.0.push(property);
+        self.0.local.push((key.into(), value.into()));
         self
     }
 
-    /// Adds property to the current active context.
+    /// Adds an inherited property to this context.
+    ///
+    /// Inherited records are visible both in this context **and** in every
+    /// nested context that is activated while this context is on the stack.
+    /// Use this when you want a property (e.g. `request_id`, `trace_id`) to
+    /// be automatically carried into all nested scopes.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use context_logger::LogContext;
+    /// use log::info;
+    ///
+    /// let _guard = LogContext::new()
+    ///     .inherited_record("request_id", "req-123") // visible in nested contexts too
+    ///     .record("handler", "process_request")      // local only
+    ///     .enter();
+    ///
+    /// let _inner = LogContext::new()
+    ///     .record("step", "validate")
+    ///     .enter();
+    ///
+    /// info!("validating"); // includes request_id (inherited) and step (local inner)
+    ///                      // but NOT handler (local outer)
+    /// ```
+    #[must_use]
+    pub fn inherited_record(
+        mut self,
+        key: impl Into<StaticCowStr>,
+        value: impl Into<ContextValue>,
+    ) -> Self {
+        self.0.inherited.push((key.into(), value.into()));
+        self
+    }
+
+    /// Adds a local property to the current active context.
     ///
     /// This is useful for adding context information dynamically without having
     /// direct access to the context.
@@ -71,6 +118,41 @@ impl LogContext {
 
         CONTEXT_STACK.with(|stack| {
             if let Some(mut top) = stack.top_mut() {
+                top.push(property);
+            }
+        });
+    }
+
+    /// Adds an inherited property to the current active context.
+    ///
+    /// Unlike [`add_record`](Self::add_record), the added property will be visible
+    /// in every nested context that is activated after this call.
+    ///
+    /// # Note
+    ///
+    /// If there is no active context, this operation will have no effect.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use context_logger::{LogContext, ContextValue};
+    /// use log::info;
+    ///
+    /// fn set_trace_id(trace_id: &'static str) {
+    ///     LogContext::add_inherited_record("trace_id", trace_id);
+    /// }
+    ///
+    /// let _outer = LogContext::new().enter();
+    /// set_trace_id("trace-abc");
+    ///
+    /// let _inner = LogContext::new().record("step", "validate").enter();
+    /// info!("validating"); // includes trace_id (inherited) and step (local)
+    /// ```
+    pub fn add_inherited_record(key: impl Into<StaticCowStr>, value: impl Into<ContextValue>) {
+        let property = (key.into(), value.into());
+
+        CONTEXT_STACK.with(|stack| {
+            if let Some(mut top) = stack.top_inherited_mut() {
                 top.push(property);
             }
         });

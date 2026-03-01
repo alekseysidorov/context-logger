@@ -173,23 +173,14 @@ impl log::Log for ContextLogger {
 
     fn log(&self, record: &log::Record) {
         let error = CONTEXT_STACK.try_with(|stack| {
-            if let Some(top) = stack.top() {
-                let extra_records = ExtraRecords {
-                    source: &record.key_values(),
-                    default_records: self.default_records.as_slice(),
-                    context_records: top.as_slice(),
-                };
-                self.inner
-                    .log(&record.to_builder().key_values(&extra_records).build());
-            } else {
-                let extra_records = ExtraRecords {
-                    source: &record.key_values(),
-                    default_records: self.default_records.as_slice(),
-                    context_records: &[],
-                };
-                self.inner
-                    .log(&record.to_builder().key_values(&extra_records).build());
-            }
+            let context_records = stack.collect_all_records();
+            let extra_records = ExtraRecords {
+                source: &record.key_values(),
+                default_records: self.default_records.as_slice(),
+                context_records: context_records.as_slice(),
+            };
+            self.inner
+                .log(&record.to_builder().key_values(&extra_records).build());
         });
 
         if let Err(err) = error {
