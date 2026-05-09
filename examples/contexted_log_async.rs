@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use context_logger::{ContextLogger, ContextValue, FutureExt, LogContext};
+use context_logger::{ContextLogger, FutureExt, LogContext, LogValue};
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
@@ -35,7 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Create a nested context with additional properties
         let log_context = LogContext::new().record(
             "action",
-            ContextValue::serde(Operation {
+            LogValue::serde(Operation {
                 action: "login".to_string(),
                 name: "user".to_string(),
             }),
@@ -79,7 +79,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             LogContext::add_record(
                 "operation",
-                ContextValue::serde(Operation {
+                LogValue::serde(Operation {
                     action: "logout".to_owned(),
                     name: "Bob".to_owned(),
                 }),

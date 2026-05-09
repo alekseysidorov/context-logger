@@ -1,4 +1,4 @@
-use context_logger::{ContextLogger, ContextValue, LogContext};
+use context_logger::{ContextLogger, LogContext, LogValue};
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
@@ -36,7 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let _nested_guard = LogContext::new()
                 .record(
                     "action",
-                    ContextValue::serde(Operation {
+                    LogValue::serde(Operation {
                         action: "login".to_string(),
                         name: "user".to_string(),
                     }),

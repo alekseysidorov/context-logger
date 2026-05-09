@@ -8,6 +8,9 @@ and this project adheres to
 
 ## [Unreleased]
 
+- _breaking_ Renamed `ContextValue` to `LogValue` to better reflect its role in
+  structured logging
+
 ## [0.1.4] - 2026.02.28
 
 - Implemented `Clone` for `ContextValue` and `LogContext`
