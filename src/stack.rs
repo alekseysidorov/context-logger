@@ -3,9 +3,12 @@
 //! The stack is used by both the syncrhonous and asynchronous log
 //! context propagation mechanisms.
 
-use std::cell::{Ref, RefCell, RefMut};
+use std::{
+    borrow::Cow,
+    cell::{Ref, RefCell, RefMut},
+};
 
-use crate::{LogValue, StaticCowStr};
+use crate::LogValue;
 
 thread_local! {
     /// Thread-local stack for maintaining log context.
@@ -15,7 +18,7 @@ thread_local! {
     pub static CONTEXT_STACK: ContextStack = const { ContextStack::new() };
 }
 
-pub type ContextRecords = Vec<(StaticCowStr, LogValue)>;
+pub type ContextRecords = Vec<(Cow<'static, str>, LogValue)>;
 
 /// A stack of context properties.
 #[derive(Debug)]

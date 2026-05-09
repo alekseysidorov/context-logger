@@ -1,7 +1,9 @@
 //! Context builder for structured logging.
 
+use std::borrow::Cow;
+
 use crate::{
-    LogValue, StaticCowStr,
+    LogValue,
     guard::LogContextGuard,
     stack::{CONTEXT_STACK, ContextRecords},
 };
@@ -33,7 +35,7 @@ impl LogContext {
     ///     .record("is_admin", true);
     /// ```
     #[must_use]
-    pub fn record(mut self, key: impl Into<StaticCowStr>, value: impl Into<LogValue>) -> Self {
+    pub fn record(mut self, key: impl Into<Cow<'static, str>>, value: impl Into<LogValue>) -> Self {
         let property = (key.into(), value.into());
         self.0.push(property);
         self
@@ -66,7 +68,7 @@ impl LogContext {
     ///
     /// process_request(); // Will log with both request_id and processing_time_ms
     /// ```
-    pub fn add_record(key: impl Into<StaticCowStr>, value: impl Into<LogValue>) {
+    pub fn add_record(key: impl Into<Cow<'static, str>>, value: impl Into<LogValue>) {
         let property = (key.into(), value.into());
 
         CONTEXT_STACK.with(|stack| {

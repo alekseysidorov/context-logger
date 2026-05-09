@@ -40,8 +40,6 @@ pub mod guard;
 mod stack;
 mod value;
 
-type StaticCowStr = Cow<'static, str>;
-
 /// A logger wrapper that enhances log records with contextual properties.
 ///
 /// `ContextLogger` wraps an existing logging implementation and adds additional
@@ -152,7 +150,7 @@ impl ContextLogger {
     #[must_use]
     pub fn default_record(
         mut self,
-        key: impl Into<StaticCowStr>,
+        key: impl Into<Cow<'static, str>>,
         value: impl Into<LogValue>,
     ) -> Self {
         self.default_records.push((key.into(), value.into()));
@@ -214,7 +212,7 @@ struct ExtraRecords<'a, I> {
 
 impl<'a, I> log::kv::Source for ExtraRecords<'a, I>
 where
-    I: IntoIterator<Item = &'a (StaticCowStr, LogValue)> + Copy,
+    I: IntoIterator<Item = &'a (Cow<'static, str>, LogValue)> + Copy,
 {
     fn visit<'kvs>(
         &'kvs self,
