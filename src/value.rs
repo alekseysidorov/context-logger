@@ -23,9 +23,9 @@ impl serde::Serialize for SerdeArc {
     }
 }
 
-/// Represents a type of value that can be stored in the log context.
+/// Represents a value that can be stored in a log field.
 ///
-/// The `ContextValue` type is a flexible container designed to hold various kinds of data
+/// The `LogValue` type is a flexible container designed to hold various kinds of data
 /// that can be associated with a log entry. It supports primitive types, strings, and
 /// more complex types such as those implementing [`std::fmt::Debug`], [`std::fmt::Display`],
 /// [`std::error::Error`], or `serde::Serialize`.
@@ -36,17 +36,17 @@ impl serde::Serialize for SerdeArc {
 /// # Examples
 ///
 /// ```
-/// use context_logger::ContextValue;
+/// use context_logger::LogValue;
 ///
-/// let value = ContextValue::display("example string");
-/// let number = ContextValue::from(42);
-/// let debug_value = ContextValue::debug(vec![1, 2, 3]);
+/// let value = LogValue::display("example string");
+/// let number = LogValue::from(42);
+/// let debug_value = LogValue::debug(vec![1, 2, 3]);
 /// ```
 #[derive(Clone)]
-pub struct ContextValue(ContextValueInner);
+pub struct LogValue(LogValueInner);
 
 #[derive(Clone)]
-enum ContextValueInner {
+enum LogValueInner {
     Null,
     String(String),
     Bool(bool),
@@ -62,85 +62,85 @@ enum ContextValueInner {
     Serde(SerdeArc),
 }
 
-impl From<ContextValueInner> for ContextValue {
-    fn from(inner: ContextValueInner) -> Self {
+impl From<LogValueInner> for LogValue {
+    fn from(inner: LogValueInner) -> Self {
         Self(inner)
     }
 }
 
-impl ContextValue {
-    /// Creates a null context value.
+impl LogValue {
+    /// Creates a null log value.
     #[allow(clippy::must_use_candidate)]
     pub fn null() -> Self {
-        ContextValueInner::Null.into()
+        LogValueInner::Null.into()
     }
 
-    /// Creates a context value from a [`serde::Serialize`].
+    /// Creates a log value from a [`serde::Serialize`].
     pub fn serde<S>(value: S) -> Self
     where
         S: serde::Serialize + Send + Sync + 'static,
     {
-        ContextValueInner::Serde(SerdeArc::new(value)).into()
+        LogValueInner::Serde(SerdeArc::new(value)).into()
     }
 
-    /// Creates a context value from a [`std::fmt::Display`].
+    /// Creates a log value from a [`std::fmt::Display`].
     pub fn display<T>(value: T) -> Self
     where
         T: std::fmt::Display + Send + Sync + 'static,
     {
-        ContextValueInner::Display(Arc::new(value)).into()
+        LogValueInner::Display(Arc::new(value)).into()
     }
 
-    /// Creates a context value from a [`std::fmt::Debug`].
+    /// Creates a log value from a [`std::fmt::Debug`].
     pub fn debug<T>(value: T) -> Self
     where
         T: std::fmt::Debug + Send + Sync + 'static,
     {
-        ContextValueInner::Debug(Arc::new(value)).into()
+        LogValueInner::Debug(Arc::new(value)).into()
     }
 
-    /// Creates a context value from a [`std::error::Error`].
+    /// Creates a log value from a [`std::error::Error`].
     pub fn error<T>(value: T) -> Self
     where
         T: std::error::Error + Send + Sync + 'static,
     {
-        ContextValueInner::Error(Arc::new(value)).into()
+        LogValueInner::Error(Arc::new(value)).into()
     }
 
-    /// Represents a context value that can be used with the [`log`] crate.
+    /// Converts the log value to a value compatible with the [`log`] crate.
     #[must_use]
     pub fn as_log_value(&self) -> log::kv::Value<'_> {
         match &self.0 {
-            ContextValueInner::Null => log::kv::Value::null(),
-            ContextValueInner::String(s) => log::kv::Value::from(&**s),
-            ContextValueInner::Bool(b) => log::kv::Value::from(*b),
-            ContextValueInner::Char(c) => log::kv::Value::from(*c),
-            ContextValueInner::I64(i) => log::kv::Value::from(*i),
-            ContextValueInner::U64(u) => log::kv::Value::from(*u),
-            ContextValueInner::F64(f) => log::kv::Value::from(*f),
-            ContextValueInner::I128(i) => log::kv::Value::from(*i),
-            ContextValueInner::U128(u) => log::kv::Value::from(*u),
-            ContextValueInner::Display(value) => log::kv::Value::from_dyn_display(&**value),
-            ContextValueInner::Debug(value) => log::kv::Value::from_dyn_debug(&**value),
-            ContextValueInner::Error(value) => log::kv::Value::from_dyn_error(&**value),
-            ContextValueInner::Serde(value) => log::kv::Value::from_serde(value),
+            LogValueInner::Null => log::kv::Value::null(),
+            LogValueInner::String(s) => log::kv::Value::from(&**s),
+            LogValueInner::Bool(b) => log::kv::Value::from(*b),
+            LogValueInner::Char(c) => log::kv::Value::from(*c),
+            LogValueInner::I64(i) => log::kv::Value::from(*i),
+            LogValueInner::U64(u) => log::kv::Value::from(*u),
+            LogValueInner::F64(f) => log::kv::Value::from(*f),
+            LogValueInner::I128(i) => log::kv::Value::from(*i),
+            LogValueInner::U128(u) => log::kv::Value::from(*u),
+            LogValueInner::Display(value) => log::kv::Value::from_dyn_display(&**value),
+            LogValueInner::Debug(value) => log::kv::Value::from_dyn_debug(&**value),
+            LogValueInner::Error(value) => log::kv::Value::from_dyn_error(&**value),
+            LogValueInner::Serde(value) => log::kv::Value::from_serde(value),
         }
     }
 }
 
-macro_rules! impl_context_value_from_primitive {
+macro_rules! impl_log_value_from_primitive {
     ($($ty:ty => $arm:ident),*) => {
         $(
-            impl From<$ty> for ContextValue {
+            impl From<$ty> for LogValue {
                 fn from(value: $ty) -> Self {
-                    ContextValue(ContextValueInner::$arm(value.into()))
+                    LogValue(LogValueInner::$arm(value.into()))
                 }
             }
         )*
     };
 }
 
-impl_context_value_from_primitive!(
+impl_log_value_from_primitive!(
     bool => Bool,
     char => Char,
     &str => String,
@@ -160,13 +160,13 @@ impl_context_value_from_primitive!(
     u128 => U128
 );
 
-impl std::fmt::Display for ContextValue {
+impl std::fmt::Display for LogValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.as_log_value().fmt(f)
     }
 }
 
-impl std::fmt::Debug for ContextValue {
+impl std::fmt::Debug for LogValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.as_log_value().fmt(f)
     }

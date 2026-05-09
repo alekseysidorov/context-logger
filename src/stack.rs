@@ -5,7 +5,7 @@
 
 use std::cell::{Ref, RefCell, RefMut};
 
-use crate::{ContextValue, StaticCowStr};
+use crate::{LogValue, StaticCowStr};
 
 thread_local! {
     /// Thread-local stack for maintaining log context.
@@ -15,7 +15,7 @@ thread_local! {
     pub static CONTEXT_STACK: ContextStack = const { ContextStack::new() };
 }
 
-pub type ContextRecords = Vec<(StaticCowStr, ContextValue)>;
+pub type ContextRecords = Vec<(StaticCowStr, LogValue)>;
 
 /// A stack of context properties.
 #[derive(Debug)]

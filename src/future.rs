@@ -106,7 +106,7 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::FutureExt;
-    use crate::{ContextValue, LogContext, stack::CONTEXT_STACK};
+    use crate::{LogContext, LogValue, stack::CONTEXT_STACK};
 
     fn get_property(idx: usize) -> Option<String> {
         CONTEXT_STACK.with(|stack| {
@@ -125,7 +125,7 @@ mod tests {
                 tokio::task::yield_now().await;
                 assert_eq!(get_property(0), Some("None".to_string()));
             }
-            .in_log_context(LogContext::new().record("answer", ContextValue::null()))
+            .in_log_context(LogContext::new().record("answer", LogValue::null()))
             .await;
 
             tokio::task::yield_now().await;

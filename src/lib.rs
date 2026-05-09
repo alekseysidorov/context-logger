@@ -32,7 +32,7 @@ use std::borrow::Cow;
 use stack::ContextRecords;
 
 use self::stack::CONTEXT_STACK;
-pub use self::{context::LogContext, future::FutureExt, value::ContextValue};
+pub use self::{context::LogContext, future::FutureExt, value::LogValue};
 
 mod context;
 pub mod future;
@@ -153,7 +153,7 @@ impl ContextLogger {
     pub fn default_record(
         mut self,
         key: impl Into<StaticCowStr>,
-        value: impl Into<ContextValue>,
+        value: impl Into<LogValue>,
     ) -> Self {
         self.default_records.push((key.into(), value.into()));
         self
@@ -214,7 +214,7 @@ struct ExtraRecords<'a, I> {
 
 impl<'a, I> log::kv::Source for ExtraRecords<'a, I>
 where
-    I: IntoIterator<Item = &'a (StaticCowStr, ContextValue)> + Copy,
+    I: IntoIterator<Item = &'a (StaticCowStr, LogValue)> + Copy,
 {
     fn visit<'kvs>(
         &'kvs self,
