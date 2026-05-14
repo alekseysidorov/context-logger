@@ -50,7 +50,7 @@ impl LogContextGuard<'_> {
 
         let frame = SCOPE_STACK
             .with(ScopeStack::pop)
-            .expect("There is a bug in log context guard, context should be exists");
+            .expect("bug in LogContextGuard::exit: expected a scope frame to exist when popping on exit");
         LogContext { frame }
     }
 }
