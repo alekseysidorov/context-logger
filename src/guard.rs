@@ -37,7 +37,7 @@ pub struct LogContextGuard<'a> {
 
 impl LogContextGuard<'_> {
     pub(crate) fn enter(context: LogContext) -> Self {
-        CONTEXT_STACK.with(|stack| stack.push(context.0));
+        CONTEXT_STACK.with(|stack| stack.push(context.frame));
         Self {
             _marker: PhantomData,
         }
@@ -48,10 +48,10 @@ impl LogContextGuard<'_> {
         // because we're manually managing the context stack here.
         std::mem::forget(self);
 
-        let properties = CONTEXT_STACK
+        let frame = CONTEXT_STACK
             .with(ContextStack::pop)
             .expect("There is a bug in log context guard, context should be exists");
-        LogContext(properties)
+        LogContext { frame }
     }
 }
 
@@ -76,7 +76,10 @@ mod tests {
 
         let guard = context.enter();
         // Check that the record was added to the top context.
-        assert_eq!(CONTEXT_STACK.with(|stack| stack.top().unwrap().len()), 1);
+        assert_eq!(
+            CONTEXT_STACK.with(|stack| stack.top().unwrap().local.len()),
+            1
+        );
 
         // Check that the context stack is empty after dropping the guard.
         drop(guard);
@@ -89,12 +92,15 @@ mod tests {
         assert_eq!(CONTEXT_STACK.with(ContextStack::len), 0);
 
         let outer_guard = outer_context.enter();
-        assert_eq!(CONTEXT_STACK.with(|stack| stack.top().unwrap().len()), 1);
+        assert_eq!(
+            CONTEXT_STACK.with(|stack| stack.top().unwrap().local.len()),
+            1
+        );
 
         CONTEXT_STACK.with(|stack| {
-            let property = &stack.top().unwrap()[0];
-            assert_eq!(property.0, "simple_record");
-            assert_eq!(property.1.to_string(), "outer_value");
+            let record = &stack.top().unwrap().local[0];
+            assert_eq!(record.key(), "simple_record");
+            assert_eq!(record.value().to_string(), "outer_value");
         });
 
         let inner_context = LogContext::new().record("simple_record", "inner_value");
@@ -103,19 +109,22 @@ mod tests {
             // Test log context after inner guard is entered.
             assert_eq!(CONTEXT_STACK.with(ContextStack::len), 2);
             CONTEXT_STACK.with(|stack| {
-                let property = &stack.top().unwrap()[0];
-                assert_eq!(property.0, "simple_record");
-                assert_eq!(property.1.to_string(), "inner_value");
+                let record = &stack.top().unwrap().local[0];
+                assert_eq!(record.key(), "simple_record");
+                assert_eq!(record.value().to_string(), "inner_value");
             });
 
             drop(inner_guard);
         }
         // Test log context after inner guard is dropped.
-        assert_eq!(CONTEXT_STACK.with(|stack| stack.top().unwrap().len()), 1);
+        assert_eq!(
+            CONTEXT_STACK.with(|stack| stack.top().unwrap().local.len()),
+            1
+        );
         CONTEXT_STACK.with(|stack| {
-            let property = &stack.top().unwrap()[0];
-            assert_eq!(property.0, "simple_record");
-            assert_eq!(property.1.to_string(), "outer_value");
+            let record = &stack.top().unwrap().local[0];
+            assert_eq!(record.key(), "simple_record");
+            assert_eq!(record.value().to_string(), "outer_value");
         });
 
         drop(outer_guard);
@@ -134,9 +143,9 @@ mod tests {
             // Test log context after inner guard is entered.
             assert_eq!(CONTEXT_STACK.with(ContextStack::len), 1);
             CONTEXT_STACK.with(|stack| {
-                let property = &stack.top().unwrap()[0];
-                assert_eq!(property.0, "simple_record");
-                assert_eq!(property.1.to_string(), "first_thread");
+                let record = &stack.top().unwrap().local[0];
+                assert_eq!(record.key(), "simple_record");
+                assert_eq!(record.value().to_string(), "first_thread");
             });
 
             drop(inner_guard);
@@ -147,9 +156,9 @@ mod tests {
             // Test log context after inner guard is entered.
             assert_eq!(CONTEXT_STACK.with(ContextStack::len), 1);
             CONTEXT_STACK.with(|stack| {
-                let property = &stack.top().unwrap()[0];
-                assert_eq!(property.0, "simple_record");
-                assert_eq!(property.1.to_string(), "second_thread");
+                let record = &stack.top().unwrap().local[0];
+                assert_eq!(record.key(), "simple_record");
+                assert_eq!(record.value().to_string(), "second_thread");
             });
 
             drop(inner_guard);
@@ -159,9 +168,9 @@ mod tests {
         second_thread_handle.join().unwrap();
 
         CONTEXT_STACK.with(|stack| {
-            let property = &stack.top().unwrap()[0];
-            assert_eq!(property.0, "simple_record");
-            assert_eq!(property.1.to_string(), "main");
+            let record = &stack.top().unwrap().local[0];
+            assert_eq!(record.key(), "simple_record");
+            assert_eq!(record.value().to_string(), "main");
         });
         drop(local_guard);
     }

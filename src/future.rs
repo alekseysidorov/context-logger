@@ -111,7 +111,7 @@ mod tests {
     fn get_property(idx: usize) -> Option<String> {
         CONTEXT_STACK.with(|stack| {
             let top = stack.top();
-            top.map(|properties| properties[idx].1.to_string())
+            top.map(|frame| frame.local[idx].key().to_string())
         })
     }
 

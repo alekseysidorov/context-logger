@@ -29,14 +29,14 @@
 
 use std::borrow::Cow;
 
-use stack::ContextRecords;
-
 use self::stack::CONTEXT_STACK;
 pub use self::{context::LogContext, future::FutureExt, value::LogValue};
+use crate::record::LogRecord;
 
 mod context;
 pub mod future;
 pub mod guard;
+mod record;
 mod stack;
 mod value;
 
@@ -72,7 +72,7 @@ mod value;
 ///
 /// See [`LogContext`] for more information on how to create and manage context properties.
 pub struct ContextLogger {
-    default_records: ContextRecords,
+    default_records: Vec<LogRecord>,
     inner: Box<dyn log::Log>,
 }
 
@@ -86,7 +86,7 @@ impl ContextLogger {
         L: log::Log + 'static,
     {
         Self {
-            default_records: ContextRecords::new(),
+            default_records: Vec::new(),
             inner: Box::new(inner),
         }
     }
@@ -153,7 +153,7 @@ impl ContextLogger {
         key: impl Into<Cow<'static, str>>,
         value: impl Into<LogValue>,
     ) -> Self {
-        self.default_records.push((key.into(), value.into()));
+        self.default_records.push((key, value).into());
         self
     }
 }
@@ -175,7 +175,7 @@ impl log::Log for ContextLogger {
                 let extra_records = ExtraRecords {
                     source: &record.key_values(),
                     default_records: self.default_records.as_slice(),
-                    context_records: top.as_slice(),
+                    context_records: top.local.as_slice(),
                 };
                 self.inner
                     .log(&record.to_builder().key_values(&extra_records).build());
@@ -212,15 +212,18 @@ struct ExtraRecords<'a, I> {
 
 impl<'a, I> log::kv::Source for ExtraRecords<'a, I>
 where
-    I: IntoIterator<Item = &'a (Cow<'static, str>, LogValue)> + Copy,
+    I: IntoIterator<Item = &'a LogRecord> + Copy,
 {
     fn visit<'kvs>(
         &'kvs self,
         visitor: &mut dyn log::kv::VisitSource<'kvs>,
     ) -> Result<(), log::kv::Error> {
         let all_records = self.default_records.into_iter().chain(self.context_records);
-        for (key, value) in all_records {
-            visitor.visit_pair(log::kv::Key::from_str(key), value.as_log_value())?;
+        for record in all_records {
+            visitor.visit_pair(
+                log::kv::Key::from_str(record.key()),
+                record.value().as_log_value(),
+            )?;
         }
         self.source.visit(visitor)
     }

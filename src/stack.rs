@@ -3,12 +3,9 @@
 //! The stack is used by both the syncrhonous and asynchronous log
 //! context propagation mechanisms.
 
-use std::{
-    borrow::Cow,
-    cell::{Ref, RefCell, RefMut},
-};
+use std::cell::{Ref, RefCell, RefMut};
 
-use crate::LogValue;
+use crate::record::LogRecord;
 
 thread_local! {
     /// Thread-local stack for maintaining log context.
@@ -18,12 +15,25 @@ thread_local! {
     pub static CONTEXT_STACK: ContextStack = const { ContextStack::new() };
 }
 
-pub type ContextRecords = Vec<(Cow<'static, str>, LogValue)>;
+#[derive(Debug, Clone)]
+pub struct ScopeFrame {
+    pub local: Vec<LogRecord>,
+}
 
 /// A stack of context properties.
 #[derive(Debug)]
 pub struct ContextStack {
-    inner: RefCell<Vec<ContextRecords>>,
+    inner: RefCell<Vec<ScopeFrame>>,
+}
+
+impl ScopeFrame {
+    pub const fn new() -> Self {
+        Self { local: Vec::new() }
+    }
+
+    pub fn push(&mut self, record: impl Into<LogRecord>) {
+        self.local.push(record.into());
+    }
 }
 
 impl ContextStack {
@@ -39,8 +49,8 @@ impl ContextStack {
     /// # Panics
     ///
     /// If the stack is already borrowed.
-    pub fn push(&self, records: ContextRecords) {
-        self.inner.borrow_mut().push(records);
+    pub fn push(&self, frame: ScopeFrame) {
+        self.inner.borrow_mut().push(frame);
     }
 
     /// Pops the top set of context properties from the stack.
@@ -48,7 +58,7 @@ impl ContextStack {
     /// # Panics
     ///
     /// If the stack is already borrowed.
-    pub fn pop(&self) -> Option<ContextRecords> {
+    pub fn pop(&self) -> Option<ScopeFrame> {
         self.inner.borrow_mut().pop()
     }
 
@@ -57,7 +67,7 @@ impl ContextStack {
     /// # Panics
     ///
     /// If the stack is already mutably borrowed.
-    pub fn top(&self) -> Option<Ref<'_, ContextRecords>> {
+    pub fn top(&self) -> Option<Ref<'_, ScopeFrame>> {
         let inner = self.inner.borrow();
         if inner.is_empty() {
             None
@@ -71,7 +81,7 @@ impl ContextStack {
     /// # Panics
     ///
     /// If the stack is already borrowed.
-    pub fn top_mut(&self) -> Option<RefMut<'_, ContextRecords>> {
+    pub fn top_mut(&self) -> Option<RefMut<'_, ScopeFrame>> {
         let inner = self.inner.borrow_mut();
         if inner.is_empty() {
             None

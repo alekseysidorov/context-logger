@@ -5,7 +5,7 @@ use std::borrow::Cow;
 use crate::{
     LogValue,
     guard::LogContextGuard,
-    stack::{CONTEXT_STACK, ContextRecords},
+    stack::{CONTEXT_STACK, ScopeFrame},
 };
 
 /// A contextual properties that can be attached to log records.
@@ -13,13 +13,17 @@ use crate::{
 /// [`LogContext`] represents a set of key-value pairs that will be
 /// automatically added to log messages when the context is active.
 #[derive(Debug, Clone)]
-pub struct LogContext(pub(crate) ContextRecords);
+pub struct LogContext {
+    pub(crate) frame: ScopeFrame,
+}
 
 impl LogContext {
     /// Creates a new, empty context.
     #[must_use]
     pub const fn new() -> Self {
-        Self(ContextRecords::new())
+        Self {
+            frame: ScopeFrame::new(),
+        }
     }
 
     /// Adds property to this context.
@@ -36,8 +40,8 @@ impl LogContext {
     /// ```
     #[must_use]
     pub fn record(mut self, key: impl Into<Cow<'static, str>>, value: impl Into<LogValue>) -> Self {
-        let property = (key.into(), value.into());
-        self.0.push(property);
+        let record = (key, value);
+        self.frame.push(record);
         self
     }
 
