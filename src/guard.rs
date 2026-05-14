@@ -98,9 +98,11 @@ mod tests {
         );
 
         SCOPE_STACK.with(|stack| {
-            let record = &stack.top().unwrap().local[0];
-            assert_eq!(record.key(), "simple_record");
-            assert_eq!(record.value().to_string(), "outer_value");
+            let frame = stack.top().unwrap();
+            assert_eq!(
+                frame.find("simple_record").unwrap().value().to_string(),
+                "outer_value"
+            );
         });
 
         let inner_context = LogContext::new().record("simple_record", "inner_value");
@@ -109,9 +111,11 @@ mod tests {
             // Test log context after inner guard is entered.
             assert_eq!(SCOPE_STACK.with(ScopeStack::len), 2);
             SCOPE_STACK.with(|stack| {
-                let record = &stack.top().unwrap().local[0];
-                assert_eq!(record.key(), "simple_record");
-                assert_eq!(record.value().to_string(), "inner_value");
+                let frame = stack.top().unwrap();
+                assert_eq!(
+                    frame.find("simple_record").unwrap().value().to_string(),
+                    "inner_value"
+                );
             });
 
             drop(inner_guard);
@@ -122,9 +126,11 @@ mod tests {
             1
         );
         SCOPE_STACK.with(|stack| {
-            let record = &stack.top().unwrap().local[0];
-            assert_eq!(record.key(), "simple_record");
-            assert_eq!(record.value().to_string(), "outer_value");
+            let frame = stack.top().unwrap();
+            assert_eq!(
+                frame.find("simple_record").unwrap().value().to_string(),
+                "outer_value"
+            );
         });
 
         drop(outer_guard);
@@ -143,9 +149,11 @@ mod tests {
             // Test log context after inner guard is entered.
             assert_eq!(SCOPE_STACK.with(ScopeStack::len), 1);
             SCOPE_STACK.with(|stack| {
-                let record = &stack.top().unwrap().local[0];
-                assert_eq!(record.key(), "simple_record");
-                assert_eq!(record.value().to_string(), "first_thread");
+                let frame = stack.top().unwrap();
+                assert_eq!(
+                    frame.find("simple_record").unwrap().value().to_string(),
+                    "first_thread"
+                );
             });
 
             drop(inner_guard);
@@ -156,9 +164,11 @@ mod tests {
             // Test log context after inner guard is entered.
             assert_eq!(SCOPE_STACK.with(ScopeStack::len), 1);
             SCOPE_STACK.with(|stack| {
-                let record = &stack.top().unwrap().local[0];
-                assert_eq!(record.key(), "simple_record");
-                assert_eq!(record.value().to_string(), "second_thread");
+                let frame = stack.top().unwrap();
+                assert_eq!(
+                    frame.find("simple_record").unwrap().value().to_string(),
+                    "second_thread"
+                );
             });
 
             drop(inner_guard);
@@ -168,9 +178,11 @@ mod tests {
         second_thread_handle.join().unwrap();
 
         SCOPE_STACK.with(|stack| {
-            let record = &stack.top().unwrap().local[0];
-            assert_eq!(record.key(), "simple_record");
-            assert_eq!(record.value().to_string(), "main");
+            let frame = stack.top().unwrap();
+            assert_eq!(
+                frame.find("simple_record").unwrap().value().to_string(),
+                "main"
+            );
         });
         drop(local_guard);
     }

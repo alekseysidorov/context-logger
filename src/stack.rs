@@ -8,7 +8,7 @@ use std::cell::{Ref, RefCell, RefMut};
 use crate::record::LogRecord;
 
 thread_local! {
-    /// Thread-local stack for maintaining log context.
+    /// Thread-local stack for maintaining log scopes.
     ///
     /// Each thread has its own independent stack ensuring thread-safety without
     /// expensive synchronization.
@@ -37,6 +37,14 @@ impl ScopeFrame {
 
     pub fn push(&mut self, record: impl Into<LogRecord>) {
         self.local.push(record.into());
+    }
+
+    /// Returns the first record with the given key, or `None` if not found.
+    ///
+    /// Performs a linear scan over all records in the frame — O(n).
+    #[cfg(test)]
+    pub fn find(&self, key: &str) -> Option<&LogRecord> {
+        self.local.iter().find(|r| r.key() == key)
     }
 }
 
