@@ -29,7 +29,7 @@
 
 use std::borrow::Cow;
 
-use self::stack::CONTEXT_STACK;
+use self::stack::SCOPE_STACK;
 pub use self::{context::LogContext, future::FutureExt, value::LogValue};
 use crate::record::LogRecord;
 
@@ -170,7 +170,7 @@ impl log::Log for ContextLogger {
     }
 
     fn log(&self, record: &log::Record) {
-        let error = CONTEXT_STACK.try_with(|stack| {
+        let error = SCOPE_STACK.try_with(|stack| {
             if let Some(top) = stack.top() {
                 let extra_records = ExtraRecords {
                     source: &record.key_values(),

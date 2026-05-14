@@ -4,7 +4,7 @@ use std::marker::PhantomData;
 
 use crate::{
     LogContext,
-    stack::{CONTEXT_STACK, ContextStack},
+    stack::{SCOPE_STACK, ScopeStack},
 };
 
 /// A guard representing a current logging context in the context stack.
@@ -37,7 +37,7 @@ pub struct LogContextGuard<'a> {
 
 impl LogContextGuard<'_> {
     pub(crate) fn enter(context: LogContext) -> Self {
-        CONTEXT_STACK.with(|stack| stack.push(context.frame));
+        SCOPE_STACK.with(|stack| stack.push(context.frame));
         Self {
             _marker: PhantomData,
         }
@@ -48,8 +48,8 @@ impl LogContextGuard<'_> {
         // because we're manually managing the context stack here.
         std::mem::forget(self);
 
-        let frame = CONTEXT_STACK
-            .with(ContextStack::pop)
+        let frame = SCOPE_STACK
+            .with(ScopeStack::pop)
             .expect("There is a bug in log context guard, context should be exists");
         LogContext { frame }
     }
@@ -57,7 +57,7 @@ impl LogContextGuard<'_> {
 
 impl Drop for LogContextGuard<'_> {
     fn drop(&mut self) {
-        CONTEXT_STACK.with(ContextStack::pop);
+        SCOPE_STACK.with(ScopeStack::pop);
     }
 }
 
@@ -66,38 +66,38 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
-    use crate::stack::CONTEXT_STACK;
+    use crate::stack::SCOPE_STACK;
 
     #[test]
     fn test_log_context_guard_enter() {
         let context = LogContext::new().record("simple", 42);
         // Make sure the context stack is empty before entering the context.
-        assert_eq!(CONTEXT_STACK.with(ContextStack::is_empty), true);
+        assert_eq!(SCOPE_STACK.with(ScopeStack::is_empty), true);
 
         let guard = context.enter();
         // Check that the record was added to the top context.
         assert_eq!(
-            CONTEXT_STACK.with(|stack| stack.top().unwrap().local.len()),
+            SCOPE_STACK.with(|stack| stack.top().unwrap().local.len()),
             1
         );
 
         // Check that the context stack is empty after dropping the guard.
         drop(guard);
-        assert_eq!(CONTEXT_STACK.with(ContextStack::len), 0);
+        assert_eq!(SCOPE_STACK.with(ScopeStack::len), 0);
     }
 
     #[test]
     fn test_log_context_nested_guards() {
         let outer_context = LogContext::new().record("simple_record", "outer_value");
-        assert_eq!(CONTEXT_STACK.with(ContextStack::len), 0);
+        assert_eq!(SCOPE_STACK.with(ScopeStack::len), 0);
 
         let outer_guard = outer_context.enter();
         assert_eq!(
-            CONTEXT_STACK.with(|stack| stack.top().unwrap().local.len()),
+            SCOPE_STACK.with(|stack| stack.top().unwrap().local.len()),
             1
         );
 
-        CONTEXT_STACK.with(|stack| {
+        SCOPE_STACK.with(|stack| {
             let record = &stack.top().unwrap().local[0];
             assert_eq!(record.key(), "simple_record");
             assert_eq!(record.value().to_string(), "outer_value");
@@ -107,8 +107,8 @@ mod tests {
         {
             let inner_guard = inner_context.enter();
             // Test log context after inner guard is entered.
-            assert_eq!(CONTEXT_STACK.with(ContextStack::len), 2);
-            CONTEXT_STACK.with(|stack| {
+            assert_eq!(SCOPE_STACK.with(ScopeStack::len), 2);
+            SCOPE_STACK.with(|stack| {
                 let record = &stack.top().unwrap().local[0];
                 assert_eq!(record.key(), "simple_record");
                 assert_eq!(record.value().to_string(), "inner_value");
@@ -118,17 +118,17 @@ mod tests {
         }
         // Test log context after inner guard is dropped.
         assert_eq!(
-            CONTEXT_STACK.with(|stack| stack.top().unwrap().local.len()),
+            SCOPE_STACK.with(|stack| stack.top().unwrap().local.len()),
             1
         );
-        CONTEXT_STACK.with(|stack| {
+        SCOPE_STACK.with(|stack| {
             let record = &stack.top().unwrap().local[0];
             assert_eq!(record.key(), "simple_record");
             assert_eq!(record.value().to_string(), "outer_value");
         });
 
         drop(outer_guard);
-        assert_eq!(CONTEXT_STACK.with(ContextStack::is_empty), true);
+        assert_eq!(SCOPE_STACK.with(ScopeStack::is_empty), true);
     }
 
     #[test]
@@ -141,8 +141,8 @@ mod tests {
             let inner_guard = inner_context.enter();
 
             // Test log context after inner guard is entered.
-            assert_eq!(CONTEXT_STACK.with(ContextStack::len), 1);
-            CONTEXT_STACK.with(|stack| {
+            assert_eq!(SCOPE_STACK.with(ScopeStack::len), 1);
+            SCOPE_STACK.with(|stack| {
                 let record = &stack.top().unwrap().local[0];
                 assert_eq!(record.key(), "simple_record");
                 assert_eq!(record.value().to_string(), "first_thread");
@@ -154,8 +154,8 @@ mod tests {
             let inner_context = LogContext::new().record("simple_record", "second_thread");
             let inner_guard = inner_context.enter();
             // Test log context after inner guard is entered.
-            assert_eq!(CONTEXT_STACK.with(ContextStack::len), 1);
-            CONTEXT_STACK.with(|stack| {
+            assert_eq!(SCOPE_STACK.with(ScopeStack::len), 1);
+            SCOPE_STACK.with(|stack| {
                 let record = &stack.top().unwrap().local[0];
                 assert_eq!(record.key(), "simple_record");
                 assert_eq!(record.value().to_string(), "second_thread");
@@ -167,7 +167,7 @@ mod tests {
         first_thread_handle.join().unwrap();
         second_thread_handle.join().unwrap();
 
-        CONTEXT_STACK.with(|stack| {
+        SCOPE_STACK.with(|stack| {
             let record = &stack.top().unwrap().local[0];
             assert_eq!(record.key(), "simple_record");
             assert_eq!(record.value().to_string(), "main");

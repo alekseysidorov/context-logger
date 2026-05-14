@@ -12,17 +12,21 @@ thread_local! {
     ///
     /// Each thread has its own independent stack ensuring thread-safety without
     /// expensive synchronization.
-    pub static CONTEXT_STACK: ContextStack = const { ContextStack::new() };
+    pub static SCOPE_STACK: ScopeStack = const { ScopeStack::new() };
 }
 
+/// A single frame in the thread-local [`ScopeStack`].
+///
+/// Pushed when a scope is entered and popped when its guard is dropped.
 #[derive(Debug, Clone)]
 pub struct ScopeFrame {
+    /// Records attached at this scope level.
     pub local: Vec<LogRecord>,
 }
 
-/// A stack of context properties.
+/// A stack of scope frames, one per active [`crate::LogContextGuard`].
 #[derive(Debug)]
-pub struct ContextStack {
+pub struct ScopeStack {
     inner: RefCell<Vec<ScopeFrame>>,
 }
 
@@ -36,7 +40,7 @@ impl ScopeFrame {
     }
 }
 
-impl ContextStack {
+impl ScopeStack {
     /// Creates a new, empty context stack.
     pub const fn new() -> Self {
         Self {
@@ -91,14 +95,14 @@ impl ContextStack {
     }
 }
 
-impl Default for ContextStack {
+impl Default for ScopeStack {
     fn default() -> Self {
         Self::new()
     }
 }
 
 #[cfg(test)]
-impl ContextStack {
+impl ScopeStack {
     pub fn len(&self) -> usize {
         self.inner.borrow().len()
     }

@@ -106,12 +106,12 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::FutureExt;
-    use crate::{LogContext, LogValue, stack::CONTEXT_STACK};
+    use crate::{LogContext, LogValue, stack::SCOPE_STACK};
 
     fn get_property(idx: usize) -> Option<String> {
-        CONTEXT_STACK.with(|stack| {
+        SCOPE_STACK.with(|stack| {
             let top = stack.top();
-            top.map(|frame| frame.local[idx].key().to_string())
+            top.map(|frame| frame.local[idx].value().to_string())
         })
     }
 

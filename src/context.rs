@@ -5,7 +5,7 @@ use std::borrow::Cow;
 use crate::{
     LogValue,
     guard::LogContextGuard,
-    stack::{CONTEXT_STACK, ScopeFrame},
+    stack::{SCOPE_STACK, ScopeFrame},
 };
 
 /// A contextual properties that can be attached to log records.
@@ -75,7 +75,7 @@ impl LogContext {
     pub fn add_record(key: impl Into<Cow<'static, str>>, value: impl Into<LogValue>) {
         let property = (key.into(), value.into());
 
-        CONTEXT_STACK.with(|stack| {
+        SCOPE_STACK.with(|stack| {
             if let Some(mut top) = stack.top_mut() {
                 top.push(property);
             }
