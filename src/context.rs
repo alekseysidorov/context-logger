@@ -73,10 +73,9 @@ impl LogContext {
     /// process_request(); // Will log with both request_id and processing_time_ms
     /// ```
     pub fn add_record(key: impl Into<Cow<'static, str>>, value: impl Into<LogValue>) {
-        let record = (key.into(), value.into());
-
         SCOPE_STACK.with(|stack| {
             if let Some(mut top) = stack.top_mut() {
+                let record = (key.into(), value.into());
                 top.push(record);
             }
         });
