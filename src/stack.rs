@@ -1,6 +1,6 @@
 //! Internal thread-local stack for maintaining log scopes.
 //!
-//! The stack is used by both the syncrhonous and asynchronous log
+//! The stack is used by both the synchronous and asynchronous log
 //! context propagation mechanisms.
 
 use std::cell::{Ref, RefCell, RefMut};
