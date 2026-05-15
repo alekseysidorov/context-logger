@@ -40,11 +40,11 @@ mod record;
 mod stack;
 mod value;
 
-/// A logger wrapper that enhances log records with contextual properties.
+/// A logger wrapper that enhances log records with scope records.
 ///
 /// `ContextLogger` wraps an existing logging implementation and adds additional
-/// context properties to log records. These context properties are taken from the
-/// current context stack, which is managed by the [`LogContext`] type.
+/// scope records to log records. These records are taken from the
+/// current scope stack, which is managed by the [`LogContext`] type.
 ///
 /// # Example
 ///
@@ -67,10 +67,10 @@ mod value;
 ///
 /// // Use the context while logging
 /// let _guard = ctx.enter();
-/// info!("Processing request"); // Will include request_id and user_id properties
+/// info!("Processing request"); // Will include request_id and user_id records
 /// ```
 ///
-/// See [`LogContext`] for more information on how to create and manage context properties.
+/// See [`LogContext`] for more information on how to create and manage scope records.
 pub struct ContextLogger {
     records: Vec<LogRecord>,
     inner: Box<dyn log::Log>,
@@ -79,8 +79,8 @@ pub struct ContextLogger {
 impl ContextLogger {
     /// Creates a new [`ContextLogger`] that wraps the given logging implementation.
     ///
-    /// The inner logger will receive log records enhanced with context properties
-    /// from the current context stack.
+    /// The inner logger will receive log records enhanced with scope records
+    /// from the current scope stack.
     pub fn new<L>(inner: L) -> Self
     where
         L: log::Log + 'static,

@@ -1,4 +1,4 @@
-//! Internal thread-local stack for maintaining log context.
+//! Internal thread-local stack for maintaining log scopes.
 //!
 //! The stack is used by both the syncrhonous and asynchronous log
 //! context propagation mechanisms.
@@ -53,14 +53,14 @@ impl ScopeFrame {
 }
 
 impl ScopeStack {
-    /// Creates a new, empty context stack.
+    /// Creates a new, empty scope stack.
     pub const fn new() -> Self {
         Self {
             inner: RefCell::new(Vec::new()),
         }
     }
 
-    /// Pushes a new set of context properties onto the stack.
+    /// Pushes a new scope frame onto the stack.
     ///
     /// # Panics
     ///
@@ -69,7 +69,7 @@ impl ScopeStack {
         self.inner.borrow_mut().push(frame);
     }
 
-    /// Pops the top set of context properties from the stack.
+    /// Pops the top scope frame from the stack.
     ///
     /// # Panics
     ///
@@ -78,7 +78,7 @@ impl ScopeStack {
         self.inner.borrow_mut().pop()
     }
 
-    /// Returns a reference to the top set of context properties on the stack.
+    /// Returns a reference to the top scope frame on the stack.
     ///
     /// # Panics
     ///
@@ -92,7 +92,7 @@ impl ScopeStack {
         }
     }
 
-    /// Returns a mutable reference to the top set of context properties on the stack.
+    /// Returns a mutable reference to the top scope frame on the stack.
     ///
     /// # Panics
     ///

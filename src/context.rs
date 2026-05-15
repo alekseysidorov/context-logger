@@ -8,7 +8,7 @@ use crate::{
     stack::{SCOPE_STACK, ScopeFrame},
 };
 
-/// A contextual properties that can be attached to log records.
+/// A set of records that can be attached to a logging scope.
 ///
 /// [`LogContext`] represents a set of key-value pairs that will be
 /// automatically added to log messages when the context is active.
@@ -26,7 +26,7 @@ impl LogContext {
         }
     }
 
-    /// Adds property to this context.
+    /// Adds a record to this scope.
     ///
     /// # Examples
     ///
@@ -45,10 +45,10 @@ impl LogContext {
         self
     }
 
-    /// Adds property to the current active context.
+    /// Adds a record to the currently active scope.
     ///
-    /// This is useful for adding context information dynamically without having
-    /// direct access to the context.
+    /// This is useful for adding records dynamically without having
+    /// direct access to the current scope.
     ///
     /// # Note
     ///
@@ -61,7 +61,7 @@ impl LogContext {
     /// use log::info;
     ///
     /// fn process_request() {
-    ///     // Add context information dynamically
+    ///     // Add a record to the current scope dynamically
     ///     LogContext::add_record("processing_time_ms", 42);
     ///     info!("Request processed");
     /// }
@@ -82,7 +82,7 @@ impl LogContext {
         });
     }
 
-    /// Activating this context, returning a guard that will exit the context when dropped.
+    /// Activates this scope, returning a guard that will exit the scope when dropped.
     ///
     /// # In Asynchronous Code
     ///
