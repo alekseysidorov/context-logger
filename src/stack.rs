@@ -1,63 +1,89 @@
-//! Internal thread-local stack for maintaining log context.
+//! Internal thread-local stack for maintaining log scopes.
 //!
-//! The stack is used by both the syncrhonous and asynchronous log
+//! The stack is used by both the synchronous and asynchronous log
 //! context propagation mechanisms.
 
-use std::{
-    borrow::Cow,
-    cell::{Ref, RefCell, RefMut},
-};
+use std::cell::{Ref, RefCell, RefMut};
 
-use crate::LogValue;
+use crate::record::LogRecord;
 
 thread_local! {
-    /// Thread-local stack for maintaining log context.
+    /// Thread-local stack for maintaining log scopes.
     ///
     /// Each thread has its own independent stack ensuring thread-safety without
     /// expensive synchronization.
-    pub static CONTEXT_STACK: ContextStack = const { ContextStack::new() };
+    pub static SCOPE_STACK: ScopeStack = const { ScopeStack::new() };
 }
 
-pub type ContextRecords = Vec<(Cow<'static, str>, LogValue)>;
+/// A single frame in the thread-local [`ScopeStack`].
+///
+/// Pushed when a scope is entered and popped when its guard is dropped.
+#[derive(Debug, Clone)]
+pub struct ScopeFrame {
+    /// Records attached at this scope level.
+    local: Vec<LogRecord>,
+}
 
-/// A stack of context properties.
+/// A stack of scope frames, one per active [`crate::LogContextGuard`].
 #[derive(Debug)]
-pub struct ContextStack {
-    inner: RefCell<Vec<ContextRecords>>,
+pub struct ScopeStack {
+    inner: RefCell<Vec<ScopeFrame>>,
 }
 
-impl ContextStack {
-    /// Creates a new, empty context stack.
+impl ScopeFrame {
+    pub const fn new() -> Self {
+        Self { local: Vec::new() }
+    }
+
+    pub fn push(&mut self, record: impl Into<LogRecord>) {
+        self.local.push(record.into());
+    }
+
+    pub fn records(&self) -> impl ExactSizeIterator<Item = &LogRecord> + Clone {
+        self.local.iter()
+    }
+
+    /// Returns the first record with the given key, or `None` if not found.
+    ///
+    /// Performs a linear scan over all records in the frame — O(n).
+    #[cfg(test)]
+    pub fn find(&self, key: &str) -> Option<&LogRecord> {
+        self.local.iter().find(|r| r.key() == key)
+    }
+}
+
+impl ScopeStack {
+    /// Creates a new, empty scope stack.
     pub const fn new() -> Self {
         Self {
             inner: RefCell::new(Vec::new()),
         }
     }
 
-    /// Pushes a new set of context properties onto the stack.
+    /// Pushes a new scope frame onto the stack.
     ///
     /// # Panics
     ///
     /// If the stack is already borrowed.
-    pub fn push(&self, records: ContextRecords) {
-        self.inner.borrow_mut().push(records);
+    pub fn push(&self, frame: ScopeFrame) {
+        self.inner.borrow_mut().push(frame);
     }
 
-    /// Pops the top set of context properties from the stack.
+    /// Pops the top scope frame from the stack.
     ///
     /// # Panics
     ///
     /// If the stack is already borrowed.
-    pub fn pop(&self) -> Option<ContextRecords> {
+    pub fn pop(&self) -> Option<ScopeFrame> {
         self.inner.borrow_mut().pop()
     }
 
-    /// Returns a reference to the top set of context properties on the stack.
+    /// Returns a reference to the top scope frame on the stack.
     ///
     /// # Panics
     ///
     /// If the stack is already mutably borrowed.
-    pub fn top(&self) -> Option<Ref<'_, ContextRecords>> {
+    pub fn top(&self) -> Option<Ref<'_, ScopeFrame>> {
         let inner = self.inner.borrow();
         if inner.is_empty() {
             None
@@ -66,12 +92,12 @@ impl ContextStack {
         }
     }
 
-    /// Returns a mutable reference to the top set of context properties on the stack.
+    /// Returns a mutable reference to the top scope frame on the stack.
     ///
     /// # Panics
     ///
     /// If the stack is already borrowed.
-    pub fn top_mut(&self) -> Option<RefMut<'_, ContextRecords>> {
+    pub fn top_mut(&self) -> Option<RefMut<'_, ScopeFrame>> {
         let inner = self.inner.borrow_mut();
         if inner.is_empty() {
             None
@@ -81,14 +107,14 @@ impl ContextStack {
     }
 }
 
-impl Default for ContextStack {
+impl Default for ScopeStack {
     fn default() -> Self {
         Self::new()
     }
 }
 
 #[cfg(test)]
-impl ContextStack {
+impl ScopeStack {
     pub fn len(&self) -> usize {
         self.inner.borrow().len()
     }

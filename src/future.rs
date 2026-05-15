@@ -106,12 +106,12 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::FutureExt;
-    use crate::{LogContext, LogValue, stack::CONTEXT_STACK};
+    use crate::{LogContext, LogValue, stack::SCOPE_STACK};
 
-    fn get_property(idx: usize) -> Option<String> {
-        CONTEXT_STACK.with(|stack| {
-            let top = stack.top();
-            top.map(|properties| properties[idx].1.to_string())
+    fn find_value(key: &str) -> Option<String> {
+        SCOPE_STACK.with(|stack| {
+            let frame = stack.top()?;
+            frame.find(key).map(|r| r.value().to_string())
         })
     }
 
@@ -123,18 +123,18 @@ mod tests {
 
             async {
                 tokio::task::yield_now().await;
-                assert_eq!(get_property(0), Some("None".to_string()));
+                assert_eq!(find_value("answer"), Some("None".to_string()));
             }
             .in_log_context(LogContext::new().record("answer", LogValue::null()))
             .await;
 
             tokio::task::yield_now().await;
-            assert_eq!(get_property(0), Some(answer.to_string()));
+            assert_eq!(find_value("answer"), Some(answer.to_string()));
         }
         .in_log_context(context)
         .await;
 
-        assert_eq!(get_property(0), None);
+        assert_eq!(find_value("answer"), None);
     }
 
     #[tokio::test]
@@ -143,12 +143,12 @@ mod tests {
 
         async {
             tokio::task::yield_now().await;
-            assert_eq!(get_property(0), Some("42".to_string()));
+            assert_eq!(find_value("answer"), Some("42".to_string()));
         }
         .in_log_context(context)
         .await;
 
-        assert_eq!(get_property(0), None);
+        assert_eq!(find_value("answer"), None);
     }
 
     #[tokio::test]
@@ -166,7 +166,7 @@ mod tests {
         .await
         .unwrap_err();
 
-        assert_eq!(get_property(0), None);
+        assert_eq!(find_value("answer"), None);
     }
 
     #[tokio::test]
@@ -178,16 +178,16 @@ mod tests {
 
             async {
                 tokio::task::yield_now().await;
-                assert_eq!(get_property(0), Some("42".to_string()));
+                assert_eq!(find_value("answer"), Some("42".to_string()));
             }
             .await;
 
-            assert_eq!(get_property(0), Some("42".to_string()));
+            assert_eq!(find_value("answer"), Some("42".to_string()));
         }
         .in_log_context(context)
         .await;
 
-        assert_eq!(get_property(0), None);
+        assert_eq!(find_value("answer"), None);
     }
 
     #[tokio::test]

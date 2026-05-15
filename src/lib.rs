@@ -29,22 +29,22 @@
 
 use std::borrow::Cow;
 
-use stack::ContextRecords;
-
-use self::stack::CONTEXT_STACK;
+use self::stack::SCOPE_STACK;
 pub use self::{context::LogContext, future::FutureExt, value::LogValue};
+use crate::record::LogRecord;
 
 mod context;
 pub mod future;
 pub mod guard;
+mod record;
 mod stack;
 mod value;
 
-/// A logger wrapper that enhances log records with contextual properties.
+/// A logger wrapper that enhances log records with scope records.
 ///
 /// `ContextLogger` wraps an existing logging implementation and adds additional
-/// context properties to log records. These context properties are taken from the
-/// current context stack, which is managed by the [`LogContext`] type.
+/// scope records to log records. These records are taken from the
+/// current scope stack, which is managed by the [`LogContext`] type.
 ///
 /// # Example
 ///
@@ -67,26 +67,26 @@ mod value;
 ///
 /// // Use the context while logging
 /// let _guard = ctx.enter();
-/// info!("Processing request"); // Will include request_id and user_id properties
+/// info!("Processing request"); // Will include request_id and user_id records
 /// ```
 ///
-/// See [`LogContext`] for more information on how to create and manage context properties.
+/// See [`LogContext`] for more information on how to create and manage scope records.
 pub struct ContextLogger {
-    default_records: ContextRecords,
+    records: Vec<LogRecord>,
     inner: Box<dyn log::Log>,
 }
 
 impl ContextLogger {
     /// Creates a new [`ContextLogger`] that wraps the given logging implementation.
     ///
-    /// The inner logger will receive log records enhanced with context properties
-    /// from the current context stack.
+    /// The inner logger will receive log records enhanced with scope records
+    /// from the current scope stack.
     pub fn new<L>(inner: L) -> Self
     where
         L: log::Log + 'static,
     {
         Self {
-            default_records: ContextRecords::new(),
+            records: Vec::new(),
             inner: Box::new(inner),
         }
     }
@@ -153,7 +153,7 @@ impl ContextLogger {
         key: impl Into<Cow<'static, str>>,
         value: impl Into<LogValue>,
     ) -> Self {
-        self.default_records.push((key.into(), value.into()));
+        self.records.push((key, value).into());
         self
     }
 }
@@ -170,23 +170,31 @@ impl log::Log for ContextLogger {
     }
 
     fn log(&self, record: &log::Record) {
-        let error = CONTEXT_STACK.try_with(|stack| {
+        let error = SCOPE_STACK.try_with(|stack| {
+            // Only the top frame is read here intentionally: when scope inheritance is
+            // implemented (see issue #16), inherited records from outer scopes will be
+            // automatically copied into the new top frame on `enter()`, so the top frame
+            // will always contain a complete, flat view of all active records.
             if let Some(top) = stack.top() {
-                let extra_records = ExtraRecords {
-                    source: &record.key_values(),
-                    default_records: self.default_records.as_slice(),
-                    context_records: top.as_slice(),
-                };
-                self.inner
-                    .log(&record.to_builder().key_values(&extra_records).build());
+                self.inner.log(
+                    &record
+                        .to_builder()
+                        .key_values(&SourceWithRecords {
+                            source: &record.key_values(),
+                            records: self.records.iter().chain(top.records()),
+                        })
+                        .build(),
+                );
             } else {
-                let extra_records = ExtraRecords {
-                    source: &record.key_values(),
-                    default_records: self.default_records.as_slice(),
-                    context_records: &[],
-                };
-                self.inner
-                    .log(&record.to_builder().key_values(&extra_records).build());
+                self.inner.log(
+                    &record
+                        .to_builder()
+                        .key_values(&SourceWithRecords {
+                            source: &record.key_values(),
+                            records: self.records.iter(),
+                        })
+                        .build(),
+                );
             }
         });
 
@@ -204,23 +212,24 @@ impl log::Log for ContextLogger {
     }
 }
 
-struct ExtraRecords<'a, I> {
+struct SourceWithRecords<'a, I> {
     source: &'a dyn log::kv::Source,
-    default_records: I,
-    context_records: I,
+    records: I,
 }
 
-impl<'a, I> log::kv::Source for ExtraRecords<'a, I>
+impl<'a, I> log::kv::Source for SourceWithRecords<'a, I>
 where
-    I: IntoIterator<Item = &'a (Cow<'static, str>, LogValue)> + Copy,
+    I: Iterator<Item = &'a LogRecord> + Clone,
 {
     fn visit<'kvs>(
         &'kvs self,
         visitor: &mut dyn log::kv::VisitSource<'kvs>,
     ) -> Result<(), log::kv::Error> {
-        let all_records = self.default_records.into_iter().chain(self.context_records);
-        for (key, value) in all_records {
-            visitor.visit_pair(log::kv::Key::from_str(key), value.as_log_value())?;
+        for record in self.records.clone() {
+            visitor.visit_pair(
+                log::kv::Key::from_str(record.key()),
+                record.value().as_log_value(),
+            )?;
         }
         self.source.visit(visitor)
     }

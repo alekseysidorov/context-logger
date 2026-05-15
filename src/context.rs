@@ -5,24 +5,28 @@ use std::borrow::Cow;
 use crate::{
     LogValue,
     guard::LogContextGuard,
-    stack::{CONTEXT_STACK, ContextRecords},
+    stack::{SCOPE_STACK, ScopeFrame},
 };
 
-/// A contextual properties that can be attached to log records.
+/// A set of records that can be attached to a logging scope.
 ///
 /// [`LogContext`] represents a set of key-value pairs that will be
 /// automatically added to log messages when the context is active.
 #[derive(Debug, Clone)]
-pub struct LogContext(pub(crate) ContextRecords);
+pub struct LogContext {
+    pub(crate) frame: ScopeFrame,
+}
 
 impl LogContext {
     /// Creates a new, empty context.
     #[must_use]
     pub const fn new() -> Self {
-        Self(ContextRecords::new())
+        Self {
+            frame: ScopeFrame::new(),
+        }
     }
 
-    /// Adds property to this context.
+    /// Adds a record to this scope.
     ///
     /// # Examples
     ///
@@ -36,15 +40,15 @@ impl LogContext {
     /// ```
     #[must_use]
     pub fn record(mut self, key: impl Into<Cow<'static, str>>, value: impl Into<LogValue>) -> Self {
-        let property = (key.into(), value.into());
-        self.0.push(property);
+        let record = (key, value);
+        self.frame.push(record);
         self
     }
 
-    /// Adds property to the current active context.
+    /// Adds a record to the currently active scope.
     ///
-    /// This is useful for adding context information dynamically without having
-    /// direct access to the context.
+    /// This is useful for adding records dynamically without having
+    /// direct access to the current scope.
     ///
     /// # Note
     ///
@@ -57,7 +61,7 @@ impl LogContext {
     /// use log::info;
     ///
     /// fn process_request() {
-    ///     // Add context information dynamically
+    ///     // Add a record to the current scope dynamically
     ///     LogContext::add_record("processing_time_ms", 42);
     ///     info!("Request processed");
     /// }
@@ -69,16 +73,15 @@ impl LogContext {
     /// process_request(); // Will log with both request_id and processing_time_ms
     /// ```
     pub fn add_record(key: impl Into<Cow<'static, str>>, value: impl Into<LogValue>) {
-        let property = (key.into(), value.into());
-
-        CONTEXT_STACK.with(|stack| {
+        SCOPE_STACK.with(|stack| {
             if let Some(mut top) = stack.top_mut() {
-                top.push(property);
+                let record = (key.into(), value.into());
+                top.push(record);
             }
         });
     }
 
-    /// Activating this context, returning a guard that will exit the context when dropped.
+    /// Activates this scope, returning a guard that will exit the scope when dropped.
     ///
     /// # In Asynchronous Code
     ///
