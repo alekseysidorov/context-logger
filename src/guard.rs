@@ -48,9 +48,9 @@ impl LogContextGuard<'_> {
         // because we're manually managing the context stack here.
         std::mem::forget(self);
 
-        let frame = SCOPE_STACK
-            .with(ScopeStack::pop)
-            .expect("bug in LogContextGuard::exit: expected a scope frame to exist when popping on exit");
+        let frame = SCOPE_STACK.with(ScopeStack::pop).expect(
+            "bug in LogContextGuard::exit: expected a scope frame to exist when popping on exit",
+        );
         LogContext { frame }
     }
 }
@@ -77,7 +77,7 @@ mod tests {
         let guard = context.enter();
         // Check that the record was added to the top context.
         assert_eq!(
-            SCOPE_STACK.with(|stack| stack.top().unwrap().local.len()),
+            SCOPE_STACK.with(|stack| stack.top().unwrap().records().len()),
             1
         );
 
@@ -93,7 +93,7 @@ mod tests {
 
         let outer_guard = outer_context.enter();
         assert_eq!(
-            SCOPE_STACK.with(|stack| stack.top().unwrap().local.len()),
+            SCOPE_STACK.with(|stack| stack.top().unwrap().records().len()),
             1
         );
 
@@ -122,7 +122,7 @@ mod tests {
         }
         // Test log context after inner guard is dropped.
         assert_eq!(
-            SCOPE_STACK.with(|stack| stack.top().unwrap().local.len()),
+            SCOPE_STACK.with(|stack| stack.top().unwrap().records().len()),
             1
         );
         SCOPE_STACK.with(|stack| {

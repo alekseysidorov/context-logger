@@ -72,7 +72,7 @@ mod value;
 ///
 /// See [`LogContext`] for more information on how to create and manage context properties.
 pub struct ContextLogger {
-    default_records: Vec<LogRecord>,
+    records: Vec<LogRecord>,
     inner: Box<dyn log::Log>,
 }
 
@@ -86,7 +86,7 @@ impl ContextLogger {
         L: log::Log + 'static,
     {
         Self {
-            default_records: Vec::new(),
+            records: Vec::new(),
             inner: Box::new(inner),
         }
     }
@@ -153,7 +153,7 @@ impl ContextLogger {
         key: impl Into<Cow<'static, str>>,
         value: impl Into<LogValue>,
     ) -> Self {
-        self.default_records.push((key, value).into());
+        self.records.push((key, value).into());
         self
     }
 }
@@ -172,21 +172,25 @@ impl log::Log for ContextLogger {
     fn log(&self, record: &log::Record) {
         let error = SCOPE_STACK.try_with(|stack| {
             if let Some(top) = stack.top() {
-                let extra_records = ExtraRecords {
-                    source: &record.key_values(),
-                    default_records: self.default_records.as_slice(),
-                    context_records: top.local.as_slice(),
-                };
-                self.inner
-                    .log(&record.to_builder().key_values(&extra_records).build());
+                self.inner.log(
+                    &record
+                        .to_builder()
+                        .key_values(&SourceWithRecords {
+                            source: &record.key_values(),
+                            records: self.records.iter().chain(top.records()),
+                        })
+                        .build(),
+                );
             } else {
-                let extra_records = ExtraRecords {
-                    source: &record.key_values(),
-                    default_records: self.default_records.as_slice(),
-                    context_records: &[],
-                };
-                self.inner
-                    .log(&record.to_builder().key_values(&extra_records).build());
+                self.inner.log(
+                    &record
+                        .to_builder()
+                        .key_values(&SourceWithRecords {
+                            source: &record.key_values(),
+                            records: self.records.iter(),
+                        })
+                        .build(),
+                );
             }
         });
 
@@ -204,22 +208,20 @@ impl log::Log for ContextLogger {
     }
 }
 
-struct ExtraRecords<'a, I> {
+struct SourceWithRecords<'a, I> {
     source: &'a dyn log::kv::Source,
-    default_records: I,
-    context_records: I,
+    records: I,
 }
 
-impl<'a, I> log::kv::Source for ExtraRecords<'a, I>
+impl<'a, I> log::kv::Source for SourceWithRecords<'a, I>
 where
-    I: IntoIterator<Item = &'a LogRecord> + Copy,
+    I: Iterator<Item = &'a LogRecord> + Clone,
 {
     fn visit<'kvs>(
         &'kvs self,
         visitor: &mut dyn log::kv::VisitSource<'kvs>,
     ) -> Result<(), log::kv::Error> {
-        let all_records = self.default_records.into_iter().chain(self.context_records);
-        for record in all_records {
+        for record in self.records.clone() {
             visitor.visit_pair(
                 log::kv::Key::from_str(record.key()),
                 record.value().as_log_value(),

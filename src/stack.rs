@@ -21,7 +21,7 @@ thread_local! {
 #[derive(Debug, Clone)]
 pub struct ScopeFrame {
     /// Records attached at this scope level.
-    pub local: Vec<LogRecord>,
+    local: Vec<LogRecord>,
 }
 
 /// A stack of scope frames, one per active [`crate::LogContextGuard`].
@@ -37,6 +37,10 @@ impl ScopeFrame {
 
     pub fn push(&mut self, record: impl Into<LogRecord>) {
         self.local.push(record.into());
+    }
+
+    pub fn records(&self) -> impl ExactSizeIterator<Item = &LogRecord> + Clone {
+        self.local.iter()
     }
 
     /// Returns the first record with the given key, or `None` if not found.
