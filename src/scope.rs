@@ -30,12 +30,13 @@ use crate::{
 /// ```
 #[non_exhaustive]
 #[derive(Debug)]
-pub struct LogScope<'a> {
-    // Make this guard unsendable.
-    _marker: PhantomData<&'a *mut ()>,
+pub struct LogScope {
+    // Make this guard non-Send: LogScope manages thread-local state
+    // and must not be transferred to another thread.
+    _marker: PhantomData<*mut ()>,
 }
 
-impl LogScope<'_> {
+impl LogScope {
     /// Pushes the given context onto the current thread's scope stack and returns a guard.
     ///
     /// The context remains active until the returned guard is dropped, at which point
@@ -118,7 +119,7 @@ impl LogScope<'_> {
     }
 }
 
-impl Drop for LogScope<'_> {
+impl Drop for LogScope {
     fn drop(&mut self) {
         SCOPE_STACK.with(ScopeStack::pop);
     }
@@ -127,9 +128,13 @@ impl Drop for LogScope<'_> {
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;
+    use static_assertions::assert_not_impl_any;
 
     use super::*;
     use crate::stack::SCOPE_STACK;
+
+    // LogScope manages thread-local state and must never be Send.
+    assert_not_impl_any!(LogScope: Send);
 
     #[test]
     fn test_log_context_guard_enter() {
