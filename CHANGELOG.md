@@ -16,7 +16,7 @@ and this project adheres to
 - _breaking_ Moved `LogContext::add_record` to `LogScope::add_record`; dynamic
   record insertion is now clearly associated with the active scope rather than
   the context builder
-- _breaking_ Removed `LogScopeGuard` from the public API
+- _breaking_ Renamed `LogContextGuard` to `LogScope` in the public API
 - _breaking_ Renamed `ContextValue` to `LogValue` to better reflect its role in
   structured logging
 
