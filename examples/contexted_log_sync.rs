@@ -27,13 +27,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create a new context with properties
     {
-        let _guard = LogScope::enter(LogContext::new().record("user_id", "12345"));
+        let _guard = LogScope::enter(LogContext::new().with_record("user_id", "12345"));
 
         log::info!("Logging in");
 
         // Create a nested context with additional properties
         {
-            let context = LogContext::new().record(
+            let context = LogContext::new().with_record(
                 "action",
                 LogValue::serde(Operation {
                     action: "login".to_string(),

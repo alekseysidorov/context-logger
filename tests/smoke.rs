@@ -12,6 +12,6 @@ fn test_smoke() {
         Ok(())
     });
 
-    let _guard = LogScope::enter(LogContext::new().record("answer", 42));
+    let _guard = LogScope::enter(LogContext::new().with_record("answer", 42));
     log::info!("Smoke on the water, fire in the sky");
 }

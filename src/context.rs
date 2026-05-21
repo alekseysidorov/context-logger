@@ -2,15 +2,12 @@
 
 use std::borrow::Cow;
 
-use crate::{
-    LogValue,
-    stack::{SCOPE_STACK, ScopeFrame},
-};
+use crate::{LogValue, stack::ScopeFrame};
 
 /// A set of records that can be attached to a logging scope.
 ///
 /// [`LogContext`] represents a set of key-value pairs that will be
-/// automatically added to log messages when the context is active.
+/// automatically added to log messages when the context scope is active.
 #[derive(Debug, Clone)]
 pub struct LogContext {
     pub(crate) frame: ScopeFrame,
@@ -38,7 +35,11 @@ impl LogContext {
     ///     .record("is_admin", true);
     /// ```
     #[must_use]
-    pub fn record(mut self, key: impl Into<Cow<'static, str>>, value: impl Into<LogValue>) -> Self {
+    pub fn with_record(
+        mut self,
+        key: impl Into<Cow<'static, str>>,
+        value: impl Into<LogValue>,
+    ) -> Self {
         let record = (key, value);
         self.frame.push(record);
         self

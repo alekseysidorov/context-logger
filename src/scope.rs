@@ -7,11 +7,35 @@ use crate::{
     stack::{SCOPE_STACK, ScopeStack},
 };
 
+/// A guard representing a current logging context in the context stack.
+///
+/// When the guard is dropped, the context is automatically removed from the stack.
+/// This is returned by the [`LogContext::enter`] method.
+///
+/// # Examples
+///
+/// ```
+/// use context_logger::LogContext;
+///
+/// // Create a context with some data
+/// let context = LogContext::new().record("user_id", 123);
+///
+/// // Enter the context (pushes to stack)
+/// let guard = context.enter();
+///
+/// // Log operations here will have access to the context
+/// // ...
+///
+/// // When `guard` goes out of scope, the context is automatically removed
+/// ```
 #[non_exhaustive]
 #[derive(Debug)]
-pub struct LogScope {}
+pub struct LogScope<'a> {
+    // Make this guard unsendable.
+    _marker: PhantomData<&'a *mut ()>,
+}
 
-impl LogScope {
+impl LogScope<'_> {
     /// Activates this scope, returning a guard that will exit the scope when dropped.
     ///
     /// # In Asynchronous Code
@@ -37,8 +61,11 @@ impl LogScope {
     ///
     /// Please use the [`crate::FutureExt::in_log_context`] instead.
     #[must_use]
-    pub fn enter<'a>(context: LogContext) -> LogScopeGuard<'a> {
-        LogScopeGuard::enter(context)
+    pub fn enter(context: LogContext) -> Self {
+        SCOPE_STACK.with(|stack| stack.push(context.frame));
+        Self {
+            _marker: PhantomData,
+        }
     }
 
     /// Adds a record to the currently active scope.
@@ -76,42 +103,6 @@ impl LogScope {
             }
         });
     }
-}
-
-/// A guard representing a current logging context in the context stack.
-///
-/// When the guard is dropped, the context is automatically removed from the stack.
-/// This is returned by the [`LogContext::enter`] method.
-///
-/// # Examples
-///
-/// ```
-/// use context_logger::LogContext;
-///
-/// // Create a context with some data
-/// let context = LogContext::new().record("user_id", 123);
-///
-/// // Enter the context (pushes to stack)
-/// let guard = context.enter();
-///
-/// // Log operations here will have access to the context
-/// // ...
-///
-/// // When `guard` goes out of scope, the context is automatically removed
-/// ```
-#[derive(Debug)]
-pub struct LogScopeGuard<'a> {
-    // Make this guard unsendable.
-    _marker: PhantomData<&'a *mut ()>,
-}
-
-impl LogScopeGuard<'_> {
-    pub(crate) fn enter(context: LogContext) -> Self {
-        SCOPE_STACK.with(|stack| stack.push(context.frame));
-        Self {
-            _marker: PhantomData,
-        }
-    }
 
     pub(crate) fn exit(self) -> LogContext {
         // We need to prevent the destructor from being called
@@ -125,7 +116,13 @@ impl LogScopeGuard<'_> {
     }
 }
 
-impl Drop for LogScopeGuard<'_> {
+#[derive(Debug)]
+pub struct LogScopeGuard<'a> {
+    // Make this guard unsendable.
+    _marker: PhantomData<&'a *mut ()>,
+}
+
+impl Drop for LogScope<'_> {
     fn drop(&mut self) {
         SCOPE_STACK.with(ScopeStack::pop);
     }
@@ -140,7 +137,7 @@ mod tests {
 
     #[test]
     fn test_log_context_guard_enter() {
-        let context = LogContext::new().record("simple", 42);
+        let context = LogContext::new().with_record("simple", 42);
         // Make sure the context stack is empty before entering the context.
         assert_eq!(SCOPE_STACK.with(ScopeStack::is_empty), true);
 
@@ -158,7 +155,7 @@ mod tests {
 
     #[test]
     fn test_log_context_nested_guards() {
-        let outer_context = LogContext::new().record("simple_record", "outer_value");
+        let outer_context = LogContext::new().with_record("simple_record", "outer_value");
         assert_eq!(SCOPE_STACK.with(ScopeStack::len), 0);
 
         let outer_guard = LogScope::enter(outer_context);
@@ -175,7 +172,7 @@ mod tests {
             );
         });
 
-        let inner_context = LogContext::new().record("simple_record", "inner_value");
+        let inner_context = LogContext::new().with_record("simple_record", "inner_value");
         {
             let inner_guard = LogScope::enter(inner_context);
             // Test log context after inner guard is entered.
@@ -209,11 +206,11 @@ mod tests {
 
     #[test]
     fn test_log_context_multithread() {
-        let local_context = LogContext::new().record("simple_record", "main");
+        let local_context = LogContext::new().with_record("simple_record", "main");
         let local_guard = LogScope::enter(local_context);
 
         let first_thread_handle = std::thread::spawn(|| {
-            let inner_context = LogContext::new().record("simple_record", "first_thread");
+            let inner_context = LogContext::new().with_record("simple_record", "first_thread");
             let inner_guard = LogScope::enter(inner_context);
 
             // Test log context after inner guard is entered.
@@ -229,7 +226,7 @@ mod tests {
             drop(inner_guard);
         });
         let second_thread_handle = std::thread::spawn(|| {
-            let inner_context = LogContext::new().record("simple_record", "second_thread");
+            let inner_context = LogContext::new().with_record("simple_record", "second_thread");
             let inner_guard = LogScope::enter(inner_context);
 
             // Test log context after inner guard is entered.
