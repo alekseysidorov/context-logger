@@ -30,9 +30,9 @@ impl LogContext {
     /// use context_logger::LogContext;
     ///
     /// let context = LogContext::new()
-    ///     .record("user_id", "user-123")
-    ///     .record("request_id", 42)
-    ///     .record("is_admin", true);
+    ///     .with_record("user_id", "user-123")
+    ///     .with_record("request_id", 42)
+    ///     .with_record("is_admin", true);
     /// ```
     #[must_use]
     pub fn with_record(

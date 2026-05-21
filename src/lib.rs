@@ -54,7 +54,7 @@ mod value;
 ///
 /// ```
 /// use log::{info, LevelFilter};
-/// use context_logger::{ContextLogger, LogContext};
+/// use context_logger::{ContextLogger, LogContext, LogScope};
 ///
 /// // Create a logger.
 /// let env_logger = env_logger::builder().build();
@@ -66,11 +66,11 @@ mod value;
 ///
 /// // Create a context with properties
 /// let ctx = LogContext::new()
-///     .record("request_id", "req-123")
-///     .record("user_id", 42);
+///     .with_record("request_id", "req-123")
+///     .with_record("user_id", 42);
 ///
 /// // Use the context while logging
-/// let _guard = ctx.enter();
+/// let _guard = LogScope::enter(ctx);
 /// info!("Processing request"); // Will include request_id and user_id records
 /// ```
 ///
@@ -136,7 +136,7 @@ impl ContextLogger {
     ///
     /// ```
     /// use log::{info, LevelFilter};
-    /// use context_logger::{ContextLogger, LogContext};
+    /// use context_logger::{ContextLogger, LogContext, LogScope};
     ///
     /// // Create a logger with default records
     /// let logger = ContextLogger::new(env_logger::builder().build())
@@ -145,9 +145,8 @@ impl ContextLogger {
     /// // Initialize it
     /// logger.init(LevelFilter::Info);
     /// // Context records are added after default records
-    /// let _guard = LogContext::new()
-    ///     .record("request_id", "123")
-    ///     .enter();
+    /// let _guard = LogScope::enter(LogContext::new()
+    ///     .with_record("request_id", "123"));
     ///
     /// info!("Processing request"); // Will include service="api", version="1.0.0", request_id="123"
     /// ```

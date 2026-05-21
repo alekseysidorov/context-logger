@@ -15,13 +15,13 @@ use crate::{
 /// # Examples
 ///
 /// ```
-/// use context_logger::LogContext;
+/// use context_logger::{LogContext, LogScope};
 ///
 /// // Create a context with some data
-/// let context = LogContext::new().record("user_id", 123);
+/// let context = LogContext::new().with_record("user_id", 123);
 ///
 /// // Enter the context (pushes to stack)
-/// let guard = context.enter();
+/// let guard = LogScope::enter(context);
 ///
 /// // Log operations here will have access to the context
 /// // ...
@@ -44,19 +44,19 @@ impl LogScope<'_> {
     /// Holding the drop guard across `.await` points will result in incorrect logs:
     ///
     /// ```rust
-    /// use context_logger::LogContext;
+    /// use context_logger::{LogContext, LogScope};
     ///
     /// async fn my_async_fn() {
     ///     let ctx = LogContext::new()
-    ///         .record("request_id", "req-123")
-    ///         .record("user_id", 42);
+    ///         .with_record("request_id", "req-123")
+    ///         .with_record("user_id", 42);
     ///     // WARNING: This context will remain active until this
     ///     // guard is dropped...
-    ///     let _guard = ctx.enter();
+    ///     let _guard = LogScope::enter(ctx);
     ///     // But this code causing the runtime to switch to another task,
     ///     // while remaining in this context.
     ///     tokio::task::yield_now().await;
-    ///     }
+    /// }
     /// ```
     ///
     /// Please use the [`crate::FutureExt::in_log_context`] instead.
@@ -80,18 +80,17 @@ impl LogScope<'_> {
     /// # Examples
     ///
     /// ```
-    /// use context_logger::{LogContext, LogValue};
+    /// use context_logger::{LogContext, LogScope};
     /// use log::info;
     ///
     /// fn process_request() {
     ///     // Add a record to the current scope dynamically
-    ///     LogContext::add_record("processing_time_ms", 42);
+    ///     LogScope::add_record("processing_time_ms", 42);
     ///     info!("Request processed");
     /// }
     ///
-    /// let _guard = LogContext::new()
-    ///     .record("request_id", "req-123")
-    ///     .enter();
+    /// let _guard = LogScope::enter(LogContext::new()
+    ///     .with_record("request_id", "req-123"));
     ///
     /// process_request(); // Will log with both request_id and processing_time_ms
     /// ```

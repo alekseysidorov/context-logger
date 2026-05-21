@@ -32,7 +32,7 @@ Then, you can use it in your code:
 <!-- ANCHOR: basic_example -->
 
 ```rust
-use context_logger::{ContextLogger, LogContext};
+use context_logger::{ContextLogger, LogContext, LogScope};
 use log::info;
 
 fn main() {
@@ -44,16 +44,16 @@ fn main() {
         // Add version default record.
         .default_record("version", "1.0.0");
     // Initialize the resulting logger.
-    context_logger.init(max_level);   
+    context_logger.init(max_level);
 
     // Create a context
     let ctx = LogContext::new()
-        .record("request_id", "req-123")
-        .record("user_id", 42);
-    
+        .with_record("request_id", "req-123")
+        .with_record("user_id", 42);
+
     // Use the context
-    let _guard = ctx.enter();
-    
+    let _guard = LogScope::enter(ctx);
+
     // Log with context automatically attached
     info!("Processing request"); // Will include version=1.0.0 request_id=req-123 and user_id=42
 }
@@ -69,18 +69,18 @@ Context logger supports async functions and can propagate log context across
 `.await` points.
 
 ```rust
-use context_logger::{ContextLogger, LogContext, FutureExt};
+use context_logger::{ContextLogger, LogContext, FutureExt, LogScope};
 use log::info;
 
 async fn process_user_data(user_id: &str) {
-    let context = LogContext::new().record("user_id", user_id);
-    
+    let context = LogContext::new().with_record("user_id", user_id);
+
     async {
         info!("Processing user data"); // Includes user_id
-        
+
         // Context automatically propagates through .await points
         fetch_user_preferences().await;
-        
+
         info!("User data processed"); // Still includes user_id
     }
     .in_log_context(context)
@@ -89,7 +89,7 @@ async fn process_user_data(user_id: &str) {
 
 async fn fetch_user_preferences() {
     // Add additional context for this specific operation
-    LogContext::add_record("operation", "fetch_preferences");
+    LogScope::add_record("operation", "fetch_preferences");
     info!("Fetching preferences"); // Includes both user_id and operation
 }
 ```
