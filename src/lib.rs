@@ -29,12 +29,7 @@
 
 use std::borrow::Cow;
 
-pub use self::{
-    context::LogContext,
-    future::FutureExt,
-    scope::{LogScope, LogScopeGuard},
-    value::LogValue,
-};
+pub use self::{context::LogContext, future::FutureExt, scope::LogScope, value::LogValue};
 use crate::{record::LogRecord, stack::SCOPE_STACK};
 
 mod context;
@@ -48,7 +43,7 @@ mod value;
 ///
 /// `ContextLogger` wraps an existing logging implementation and adds additional
 /// scope records to log records. These records are taken from the
-/// current scope stack, which is managed by the [`LogContext`] type.
+/// current scope stack, which is managed by [`LogScope`].
 ///
 /// # Example
 ///

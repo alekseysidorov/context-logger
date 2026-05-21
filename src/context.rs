@@ -22,7 +22,7 @@ impl LogContext {
         }
     }
 
-    /// Adds a record to this scope.
+    /// Adds a record to this context.
     ///
     /// # Examples
     ///

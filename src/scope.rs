@@ -7,10 +7,10 @@ use crate::{
     stack::{SCOPE_STACK, ScopeStack},
 };
 
-/// A guard representing a current logging context in the context stack.
+/// A guard that represents an active logging context on the current thread's scope stack.
 ///
 /// When the guard is dropped, the context is automatically removed from the stack.
-/// This is returned by the [`LogContext::enter`] method.
+/// Created by [`LogScope::enter`].
 ///
 /// # Examples
 ///
@@ -36,7 +36,10 @@ pub struct LogScope<'a> {
 }
 
 impl LogScope<'_> {
-    /// Activates this scope, returning a guard that will exit the scope when dropped.
+    /// Pushes the given context onto the current thread's scope stack and returns a guard.
+    ///
+    /// The context remains active until the returned guard is dropped, at which point
+    /// it is automatically removed from the stack.
     ///
     /// # In Asynchronous Code
     ///
@@ -108,17 +111,11 @@ impl LogScope<'_> {
         // because we're manually managing the context stack here.
         std::mem::forget(self);
 
-        let frame = SCOPE_STACK.with(ScopeStack::pop).expect(
-            "bug in LogContextGuard::exit: expected a scope frame to exist when popping on exit",
-        );
+        let frame = SCOPE_STACK
+            .with(ScopeStack::pop)
+            .expect("bug in LogScope::exit: expected a scope frame to exist when popping on exit");
         LogContext { frame }
     }
-}
-
-#[derive(Debug)]
-pub struct LogScopeGuard<'a> {
-    // Make this guard unsendable.
-    _marker: PhantomData<&'a *mut ()>,
 }
 
 impl Drop for LogScope<'_> {
