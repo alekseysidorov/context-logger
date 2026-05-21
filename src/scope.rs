@@ -1,27 +1,27 @@
 //! A current logging context guard.
 
-use std::marker::PhantomData;
+use std::{borrow::Cow, marker::PhantomData};
 
 use crate::{
-    LogContext,
+    LogContext, LogValue,
     stack::{SCOPE_STACK, ScopeStack},
 };
 
-/// A guard representing a current logging context in the context stack.
+/// A guard that represents an active logging context on the current thread's scope stack.
 ///
 /// When the guard is dropped, the context is automatically removed from the stack.
-/// This is returned by the [`LogContext::enter`] method.
+/// Created by [`LogScope::enter`].
 ///
 /// # Examples
 ///
 /// ```
-/// use context_logger::LogContext;
+/// use context_logger::{LogContext, LogScope};
 ///
 /// // Create a context with some data
-/// let context = LogContext::new().record("user_id", 123);
+/// let context = LogContext::new().with_record("user_id", 123);
 ///
 /// // Enter the context (pushes to stack)
-/// let guard = context.enter();
+/// let guard = LogScope::enter(context);
 ///
 /// // Log operations here will have access to the context
 /// // ...
@@ -30,17 +30,81 @@ use crate::{
 /// ```
 #[non_exhaustive]
 #[derive(Debug)]
-pub struct LogContextGuard<'a> {
-    // Make this guard unsendable.
-    _marker: PhantomData<&'a *mut ()>,
+pub struct LogScope {
+    // Make this guard non-Send: LogScope manages thread-local state
+    // and must not be transferred to another thread.
+    _marker: PhantomData<*mut ()>,
 }
 
-impl LogContextGuard<'_> {
-    pub(crate) fn enter(context: LogContext) -> Self {
+impl LogScope {
+    /// Pushes the given context onto the current thread's scope stack and returns a guard.
+    ///
+    /// The context remains active until the returned guard is dropped, at which point
+    /// it is automatically removed from the stack.
+    ///
+    /// # In Asynchronous Code
+    ///
+    /// *Warning:* in asynchronous code [`Self::enter`] should be used very carefully or avoided entirely.
+    /// Holding the drop guard across `.await` points will result in incorrect logs:
+    ///
+    /// ```rust
+    /// use context_logger::{LogContext, LogScope};
+    ///
+    /// async fn my_async_fn() {
+    ///     let ctx = LogContext::new()
+    ///         .with_record("request_id", "req-123")
+    ///         .with_record("user_id", 42);
+    ///     // WARNING: This context will remain active until this
+    ///     // guard is dropped...
+    ///     let _guard = LogScope::enter(ctx);
+    ///     // But this code causing the runtime to switch to another task,
+    ///     // while remaining in this context.
+    ///     tokio::task::yield_now().await;
+    /// }
+    /// ```
+    ///
+    /// Please use the [`crate::FutureExt::in_log_context`] instead.
+    #[must_use]
+    pub fn enter(context: LogContext) -> Self {
         SCOPE_STACK.with(|stack| stack.push(context.frame));
         Self {
             _marker: PhantomData,
         }
+    }
+
+    /// Adds a record to the currently active scope.
+    ///
+    /// This is useful for adding records dynamically without having
+    /// direct access to the current scope.
+    ///
+    /// # Note
+    ///
+    /// If there is no active context, this operation will have no effect.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use context_logger::{LogContext, LogScope};
+    /// use log::info;
+    ///
+    /// fn process_request() {
+    ///     // Add a record to the current scope dynamically
+    ///     LogScope::add_record("processing_time_ms", 42);
+    ///     info!("Request processed");
+    /// }
+    ///
+    /// let _guard = LogScope::enter(LogContext::new()
+    ///     .with_record("request_id", "req-123"));
+    ///
+    /// process_request(); // Will log with both request_id and processing_time_ms
+    /// ```
+    pub fn add_record(key: impl Into<Cow<'static, str>>, value: impl Into<LogValue>) {
+        SCOPE_STACK.with(|stack| {
+            if let Some(mut top) = stack.top_mut() {
+                let record = (key.into(), value.into());
+                top.push(record);
+            }
+        });
     }
 
     pub(crate) fn exit(self) -> LogContext {
@@ -48,14 +112,14 @@ impl LogContextGuard<'_> {
         // because we're manually managing the context stack here.
         std::mem::forget(self);
 
-        let frame = SCOPE_STACK.with(ScopeStack::pop).expect(
-            "bug in LogContextGuard::exit: expected a scope frame to exist when popping on exit",
-        );
+        let frame = SCOPE_STACK
+            .with(ScopeStack::pop)
+            .expect("bug in LogScope::exit: expected a scope frame to exist when popping on exit");
         LogContext { frame }
     }
 }
 
-impl Drop for LogContextGuard<'_> {
+impl Drop for LogScope {
     fn drop(&mut self) {
         SCOPE_STACK.with(ScopeStack::pop);
     }
@@ -64,17 +128,21 @@ impl Drop for LogContextGuard<'_> {
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;
+    use static_assertions::assert_not_impl_any;
 
     use super::*;
     use crate::stack::SCOPE_STACK;
 
+    // LogScope manages thread-local state and must never be Send.
+    assert_not_impl_any!(LogScope: Send);
+
     #[test]
     fn test_log_context_guard_enter() {
-        let context = LogContext::new().record("simple", 42);
+        let context = LogContext::new().with_record("simple", 42);
         // Make sure the context stack is empty before entering the context.
         assert_eq!(SCOPE_STACK.with(ScopeStack::is_empty), true);
 
-        let guard = context.enter();
+        let guard = LogScope::enter(context);
         // Check that the record was added to the top context.
         assert_eq!(
             SCOPE_STACK.with(|stack| stack.top().unwrap().records().len()),
@@ -88,10 +156,10 @@ mod tests {
 
     #[test]
     fn test_log_context_nested_guards() {
-        let outer_context = LogContext::new().record("simple_record", "outer_value");
+        let outer_context = LogContext::new().with_record("simple_record", "outer_value");
         assert_eq!(SCOPE_STACK.with(ScopeStack::len), 0);
 
-        let outer_guard = outer_context.enter();
+        let outer_guard = LogScope::enter(outer_context);
         assert_eq!(
             SCOPE_STACK.with(|stack| stack.top().unwrap().records().len()),
             1
@@ -105,9 +173,9 @@ mod tests {
             );
         });
 
-        let inner_context = LogContext::new().record("simple_record", "inner_value");
+        let inner_context = LogContext::new().with_record("simple_record", "inner_value");
         {
-            let inner_guard = inner_context.enter();
+            let inner_guard = LogScope::enter(inner_context);
             // Test log context after inner guard is entered.
             assert_eq!(SCOPE_STACK.with(ScopeStack::len), 2);
             SCOPE_STACK.with(|stack| {
@@ -139,12 +207,12 @@ mod tests {
 
     #[test]
     fn test_log_context_multithread() {
-        let local_context = LogContext::new().record("simple_record", "main");
-        let local_guard = local_context.enter();
+        let local_context = LogContext::new().with_record("simple_record", "main");
+        let local_guard = LogScope::enter(local_context);
 
         let first_thread_handle = std::thread::spawn(|| {
-            let inner_context = LogContext::new().record("simple_record", "first_thread");
-            let inner_guard = inner_context.enter();
+            let inner_context = LogContext::new().with_record("simple_record", "first_thread");
+            let inner_guard = LogScope::enter(inner_context);
 
             // Test log context after inner guard is entered.
             assert_eq!(SCOPE_STACK.with(ScopeStack::len), 1);
@@ -159,8 +227,9 @@ mod tests {
             drop(inner_guard);
         });
         let second_thread_handle = std::thread::spawn(|| {
-            let inner_context = LogContext::new().record("simple_record", "second_thread");
-            let inner_guard = inner_context.enter();
+            let inner_context = LogContext::new().with_record("simple_record", "second_thread");
+            let inner_guard = LogScope::enter(inner_context);
+
             // Test log context after inner guard is entered.
             assert_eq!(SCOPE_STACK.with(ScopeStack::len), 1);
             SCOPE_STACK.with(|stack| {

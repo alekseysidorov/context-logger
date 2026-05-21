@@ -24,7 +24,7 @@ pub struct ScopeFrame {
     local: Vec<LogRecord>,
 }
 
-/// A stack of scope frames, one per active [`crate::LogContextGuard`].
+/// A stack of scope frames, one per active [`crate::LogScope`].
 #[derive(Debug)]
 pub struct ScopeStack {
     inner: RefCell<Vec<ScopeFrame>>,

@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use context_logger::{ContextLogger, FutureExt, LogContext, LogValue};
+use context_logger::{ContextLogger, FutureExt, LogContext, LogScope, LogValue};
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
@@ -29,11 +29,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     log::info!("Initialized context logger");
 
     // Create a new context with properties.
-    let log_context = LogContext::new().record("user_id", "12345");
+    let log_context = LogContext::new().with_record("user_id", "12345");
     let first_future = async move {
         log::info!("Logging in");
         // Create a nested context with additional properties
-        let log_context = LogContext::new().record(
+        let log_context = LogContext::new().with_record(
             "action",
             LogValue::serde(Operation {
                 action: "login".to_string(),
@@ -53,10 +53,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .in_log_context(log_context);
 
     let log_context = LogContext::new()
-        .record("name", "Alice")
-        .record("age", 25)
-        .record("married", true)
-        .record("email", "alice@example.com");
+        .with_record("name", "Alice")
+        .with_record("age", 25)
+        .with_record("married", true)
+        .with_record("email", "alice@example.com");
     let second_future = async move {
         tokio::task::yield_now().await;
 
@@ -67,9 +67,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .in_log_context(log_context);
 
     let log_context = LogContext::new()
-        .record("name", "Bob")
-        .record("age", 30)
-        .record("email", "bob@example.com");
+        .with_record("name", "Bob")
+        .with_record("age", 30)
+        .with_record("email", "bob@example.com");
     let third_future = tokio::spawn(
         async move {
             tokio::task::yield_now().await;
@@ -77,7 +77,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             log::info!("Third future pending");
             tokio::time::sleep(Duration::from_millis(100)).await;
 
-            LogContext::add_record(
+            LogScope::add_record(
                 "operation",
                 LogValue::serde(Operation {
                     action: "logout".to_owned(),
@@ -93,11 +93,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     res?;
 
     let context = LogContext::new()
-        .record("name", "Charlie")
-        .record("age", 35)
-        .record("email", "charlie@example.com");
+        .with_record("name", "Charlie")
+        .with_record("age", 35)
+        .with_record("email", "charlie@example.com");
 
-    let _guard = context.enter();
+    let _guard = LogScope::enter(context);
 
     log::info!("Last call completed");
 

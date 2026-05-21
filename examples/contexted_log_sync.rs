@@ -1,4 +1,4 @@
-use context_logger::{ContextLogger, LogContext, LogValue};
+use context_logger::{ContextLogger, LogContext, LogScope, LogValue};
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
@@ -27,21 +27,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create a new context with properties
     {
-        let _guard = LogContext::new().record("user_id", "12345").enter();
+        let _guard = LogScope::enter(LogContext::new().with_record("user_id", "12345"));
 
         log::info!("Logging in");
 
         // Create a nested context with additional properties
         {
-            let _nested_guard = LogContext::new()
-                .record(
-                    "action",
-                    LogValue::serde(Operation {
-                        action: "login".to_string(),
-                        name: "user".to_string(),
-                    }),
-                )
-                .enter();
+            let context = LogContext::new().with_record(
+                "action",
+                LogValue::serde(Operation {
+                    action: "login".to_string(),
+                    name: "user".to_string(),
+                }),
+            );
+            let _nested_guard = LogScope::enter(context);
             log::info!("User logged in successfully");
         }
 
