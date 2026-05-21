@@ -1,3 +1,5 @@
+use context_logger::{LogContext, LogScope};
+
 use crate::common::{RecordExt, check_logger_once};
 
 pub mod common;
@@ -10,8 +12,6 @@ fn test_smoke() {
         Ok(())
     });
 
-    let _guard = context_logger::LogContext::new()
-        .record("answer", 42)
-        .enter();
+    let _guard = LogScope::enter(LogContext::new().record("answer", 42));
     log::info!("Smoke on the water, fire in the sky");
 }

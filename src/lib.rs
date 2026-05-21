@@ -29,14 +29,18 @@
 
 use std::borrow::Cow;
 
-use self::stack::SCOPE_STACK;
-pub use self::{context::LogContext, future::FutureExt, value::LogValue};
-use crate::record::LogRecord;
+pub use self::{
+    context::LogContext,
+    future::FutureExt,
+    scope::{LogScope, LogScopeGuard},
+    value::LogValue,
+};
+use crate::{record::LogRecord, stack::SCOPE_STACK};
 
 mod context;
 pub mod future;
-pub mod guard;
 mod record;
+mod scope;
 mod stack;
 mod value;
 

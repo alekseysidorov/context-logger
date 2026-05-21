@@ -4,7 +4,7 @@ use std::task::Poll;
 
 use pin_project::pin_project;
 
-use crate::LogContext;
+use crate::{LogContext, scope::LogScope};
 
 /// Extension trait for futures to propagate contextual logging information.
 ///
@@ -84,7 +84,7 @@ where
             .take()
             .expect("An attempt to poll panicked future");
 
-        let guard = log_context.enter();
+        let guard = LogScope::enter(log_context);
         let result = this.inner.poll(cx);
         this.log_context.replace(guard.exit());
 

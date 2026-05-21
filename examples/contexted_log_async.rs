@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use context_logger::{ContextLogger, FutureExt, LogContext, LogValue};
+use context_logger::{ContextLogger, FutureExt, LogContext, LogScope, LogValue};
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
@@ -77,7 +77,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             log::info!("Third future pending");
             tokio::time::sleep(Duration::from_millis(100)).await;
 
-            LogContext::add_record(
+            LogScope::add_record(
                 "operation",
                 LogValue::serde(Operation {
                     action: "logout".to_owned(),
@@ -97,7 +97,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .record("age", 35)
         .record("email", "charlie@example.com");
 
-    let _guard = context.enter();
+    let _guard = LogScope::enter(context);
 
     log::info!("Last call completed");
 

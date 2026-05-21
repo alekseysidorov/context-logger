@@ -4,7 +4,6 @@ use std::borrow::Cow;
 
 use crate::{
     LogValue,
-    guard::LogContextGuard,
     stack::{SCOPE_STACK, ScopeFrame},
 };
 
@@ -43,72 +42,6 @@ impl LogContext {
         let record = (key, value);
         self.frame.push(record);
         self
-    }
-
-    /// Adds a record to the currently active scope.
-    ///
-    /// This is useful for adding records dynamically without having
-    /// direct access to the current scope.
-    ///
-    /// # Note
-    ///
-    /// If there is no active context, this operation will have no effect.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use context_logger::{LogContext, LogValue};
-    /// use log::info;
-    ///
-    /// fn process_request() {
-    ///     // Add a record to the current scope dynamically
-    ///     LogContext::add_record("processing_time_ms", 42);
-    ///     info!("Request processed");
-    /// }
-    ///
-    /// let _guard = LogContext::new()
-    ///     .record("request_id", "req-123")
-    ///     .enter();
-    ///
-    /// process_request(); // Will log with both request_id and processing_time_ms
-    /// ```
-    pub fn add_record(key: impl Into<Cow<'static, str>>, value: impl Into<LogValue>) {
-        SCOPE_STACK.with(|stack| {
-            if let Some(mut top) = stack.top_mut() {
-                let record = (key.into(), value.into());
-                top.push(record);
-            }
-        });
-    }
-
-    /// Activates this scope, returning a guard that will exit the scope when dropped.
-    ///
-    /// # In Asynchronous Code
-    ///
-    /// *Warning:* in asynchronous code [`Self::enter`] should be used very carefully or avoided entirely.
-    /// Holding the drop guard across `.await` points will result in incorrect logs:
-    ///
-    /// ```rust
-    /// use context_logger::LogContext;
-    ///
-    /// async fn my_async_fn() {
-    ///     let ctx = LogContext::new()
-    ///         .record("request_id", "req-123")
-    ///         .record("user_id", 42);
-    ///     // WARNING: This context will remain active until this
-    ///     // guard is dropped...
-    ///     let _guard = ctx.enter();
-    ///     // But this code causing the runtime to switch to another task,
-    ///     // while remaining in this context.
-    ///     tokio::task::yield_now().await;
-    ///     }
-    /// ```
-    ///
-    /// Please use the [`crate::FutureExt::in_log_context`] instead.
-    ///
-    #[must_use]
-    pub fn enter<'a>(self) -> LogContextGuard<'a> {
-        LogContextGuard::enter(self)
     }
 }
 
