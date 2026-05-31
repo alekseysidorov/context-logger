@@ -81,6 +81,11 @@ impl LogScope {
     ///
     /// If there is no active context, this operation will have no effect.
     ///
+    /// # Ordering
+    ///
+    /// The order in which records appear in log output is **not guaranteed**.
+    /// Do not rely on any specific ordering of keys.
+    ///
     /// # Examples
     ///
     /// ```

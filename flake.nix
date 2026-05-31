@@ -1,6 +1,6 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     fenix.url = "github:nix-community/fenix/monthly";
     treefmt-nix.url = "github:numtide/treefmt-nix";
     flake-utils.url = "github:numtide/flake-utils";
@@ -31,8 +31,8 @@
           };
           # Rust toolchain versions used in this project
           stable = {
-            name = "1.92.0";
-            sha256 = "sha256-sqSWJDUxc+zaz1nBWMAJKTAGBuGWP25GCftIOlCEAtA=";
+            name = "1.96.0";
+            sha256 = "sha256-mvUGEOHYJpn3ikC5hckneuGixaC+yGrkMM/liDIDgoU=";
           };
         };
         # Complete toolchains set
@@ -83,7 +83,13 @@
         };
         # for `nix develop` and direnv
         devShells.default = pkgs.mkShell {
-          nativeBuildInputs = runtimeInputs;
+          nativeBuildInputs =
+            with pkgs;
+            runtimeInputs
+            ++ [
+              marksman
+              typos-lsp
+            ];
         };
         # for `nix run`
         packages = (rustDev.mkCheckPackages self.checks.${system}) // {
