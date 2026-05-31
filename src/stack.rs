@@ -42,13 +42,22 @@ impl ScopeFrame {
     pub fn records(&self) -> impl ExactSizeIterator<Item = &LogRecord> + Clone {
         self.local.iter()
     }
+}
 
+#[cfg(test)]
+impl ScopeFrame {
     /// Returns the first record with the given key, or `None` if not found.
     ///
     /// Performs a linear scan over all records in the frame — O(n).
-    #[cfg(test)]
-    pub fn find(&self, key: &str) -> Option<&LogRecord> {
-        self.local.iter().find(|r| r.key() == key)
+    pub fn find(&self, key: &str) -> Option<&crate::LogValue> {
+        self.local
+            .iter()
+            .find(|r| r.key() == key)
+            .map(crate::record::LogRecord::value)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.local.is_empty()
     }
 }
 

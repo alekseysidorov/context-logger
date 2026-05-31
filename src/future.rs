@@ -111,7 +111,7 @@ mod tests {
     fn find_value(key: &str) -> Option<String> {
         SCOPE_STACK.with(|stack| {
             let frame = stack.top()?;
-            frame.find(key).map(|r| r.value().to_string())
+            frame.find(key).map(ToString::to_string)
         })
     }
 

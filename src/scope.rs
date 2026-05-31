@@ -112,6 +112,32 @@ impl LogScope {
         });
     }
 
+    /// Extracts the currently active logging context.
+    ///
+    /// This is useful for propagating context when spawning new threads or async tasks,
+    /// allowing child to inherit logging information from the current scope.
+    ///
+    /// # Example
+    ///
+    /// ```
+    #[doc = include_str!("../examples/current_context.rs")]
+    /// ```
+    ///
+    /// # Notes
+    ///
+    /// - Returns an empty context if there is no active scopes.
+    /// - The returned [`LogContext`] is a clone of the active context, so it's safe to move into spawned tasks.
+    #[must_use]
+    pub fn current_context() -> LogContext {
+        SCOPE_STACK
+            .with(|stack| {
+                stack.top().map(|frame| LogContext {
+                    frame: frame.clone(),
+                })
+            })
+            .unwrap_or_default()
+    }
+
     pub(crate) fn exit(self) -> LogContext {
         // We need to prevent the destructor from being called
         // because we're manually managing the context stack here.
@@ -173,7 +199,7 @@ mod tests {
         SCOPE_STACK.with(|stack| {
             let frame = stack.top().unwrap();
             assert_eq!(
-                frame.find("simple_record").unwrap().value().to_string(),
+                frame.find("simple_record").unwrap().to_string(),
                 "outer_value"
             );
         });
@@ -186,7 +212,7 @@ mod tests {
             SCOPE_STACK.with(|stack| {
                 let frame = stack.top().unwrap();
                 assert_eq!(
-                    frame.find("simple_record").unwrap().value().to_string(),
+                    frame.find("simple_record").unwrap().to_string(),
                     "inner_value"
                 );
             });
@@ -201,7 +227,7 @@ mod tests {
         SCOPE_STACK.with(|stack| {
             let frame = stack.top().unwrap();
             assert_eq!(
-                frame.find("simple_record").unwrap().value().to_string(),
+                frame.find("simple_record").unwrap().to_string(),
                 "outer_value"
             );
         });
@@ -224,7 +250,7 @@ mod tests {
             SCOPE_STACK.with(|stack| {
                 let frame = stack.top().unwrap();
                 assert_eq!(
-                    frame.find("simple_record").unwrap().value().to_string(),
+                    frame.find("simple_record").unwrap().to_string(),
                     "first_thread"
                 );
             });
@@ -240,7 +266,7 @@ mod tests {
             SCOPE_STACK.with(|stack| {
                 let frame = stack.top().unwrap();
                 assert_eq!(
-                    frame.find("simple_record").unwrap().value().to_string(),
+                    frame.find("simple_record").unwrap().to_string(),
                     "second_thread"
                 );
             });
@@ -253,11 +279,30 @@ mod tests {
 
         SCOPE_STACK.with(|stack| {
             let frame = stack.top().unwrap();
-            assert_eq!(
-                frame.find("simple_record").unwrap().value().to_string(),
-                "main"
-            );
+            assert_eq!(frame.find("simple_record").unwrap().to_string(), "main");
         });
         drop(local_guard);
+    }
+
+    #[test]
+    fn test_current_context_empty_scope() {
+        let context = LogScope::current_context();
+        assert!(context.frame.is_empty());
+    }
+
+    #[test]
+    fn test_current_context_with_scope() {
+        let context = LogContext::new().with_record("record", 42);
+        {
+            let _guard = LogScope::enter(context);
+
+            let current_context = LogScope::current_context();
+            assert_eq!(
+                current_context.frame.find("record").unwrap().to_string(),
+                "42"
+            );
+        }
+
+        assert!(LogScope::current_context().frame.is_empty());
     }
 }
