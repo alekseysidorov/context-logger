@@ -115,11 +115,11 @@ impl LogScope {
     /// Extracts the currently active logging context.
     ///
     /// This is useful for propagating context when spawning new threads or async tasks,
-    /// allowing child to inherit logging information from the current scope.
+    /// allowing child tasks to inherit logging information from the current scope.
     ///
     /// # Example
     ///
-    /// ```
+    /// ```no_run
     #[doc = include_str!("../examples/current_context.rs")]
     /// ```
     ///
