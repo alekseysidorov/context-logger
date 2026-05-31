@@ -125,7 +125,7 @@ impl LogScope {
     ///
     /// # Notes
     ///
-    /// - Returns an empty context if there is no active scopes.
+    /// - Returns an empty context if there is no active scope.
     /// - The returned [`LogContext`] is a clone of the active context, so it's safe to move into spawned tasks.
     #[must_use]
     pub fn current_context() -> LogContext {
