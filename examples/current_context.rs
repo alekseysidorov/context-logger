@@ -36,6 +36,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 async fn count_with_tokio_spawn(counter: u64) {
     log::info!("Invoked a function with detached work");
 
+    // The scope stack is thread-local, so the active context is not visible
+    // inside `tokio::spawn` by default. Capture it here and pass it explicitly.
     let context = LogScope::current_context();
     let handle = tokio::spawn(
         async move {

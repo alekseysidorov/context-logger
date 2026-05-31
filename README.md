@@ -92,6 +92,26 @@ async fn fetch_user_preferences() {
     LogScope::add_record("operation", "fetch_preferences");
     info!("Fetching preferences"); // Includes both user_id and operation
 }
+
+async fn spawn_background_job(user_id: &str) {
+    let context = LogContext::new().with_record("user_id", user_id);
+
+    async {
+        // The scope stack is thread-local: capture the active context
+        // before crossing the task boundary with tokio::spawn.
+        let context = LogScope::current_context();
+        tokio::spawn(
+            async move {
+                info!("Running background job"); // Includes user_id
+            }
+            .in_log_context(context),
+        )
+        .await
+        .unwrap();
+    }
+    .in_log_context(context)
+    .await;
+}
 ```
 
 <!-- ANCHOR_END: async_example -->
