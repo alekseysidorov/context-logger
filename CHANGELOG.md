@@ -11,6 +11,17 @@ and this project adheres to
 - Added `LogScope::current_context` — captures and clones the currently active
   logging context so it can be propagated to spawned threads and async tasks.
   See the new example `examples/current_context.rs`.
+- _breaking_ Renamed `LogContext::record` to `LogContext::with_record` to follow
+  the standard Rust builder pattern naming convention
+- _breaking_ Replaced `LogContext::enter` instance method with the
+  `LogScope::enter(context)` static method; `LogScope` is now the explicit guard
+  type that keeps the context active and removes it from the stack on drop
+- _breaking_ Moved `LogContext::add_record` to `LogScope::add_record`; dynamic
+  record insertion is now clearly associated with the active scope rather than
+  the context builder
+- _breaking_ Renamed `LogContextGuard` to `LogScope` in the public API
+- _breaking_ Renamed `ContextValue` to `LogValue` to better reflect its role in
+  structured logging
 
 ## [0.1.4] - 2026.02.28
 
