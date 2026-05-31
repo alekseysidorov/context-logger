@@ -24,6 +24,11 @@ impl LogContext {
 
     /// Adds a record to this context.
     ///
+    /// # Ordering
+    ///
+    /// The order in which records appear in log output is **not guaranteed**.
+    /// Do not rely on any specific ordering of keys.
+    ///
     /// # Examples
     ///
     /// ```
