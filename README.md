@@ -32,7 +32,7 @@ Then, you can use it in your code:
 <!-- ANCHOR: basic_example -->
 
 ```rust
-use context_logger::{ContextLogger, LogContext, LogScope, LogContextExt as _};
+use context_logger::{ContextLogger, LogContext, LogContextExt as _};
 use log::info;
 
 fn main() {
