@@ -72,6 +72,29 @@ impl LogScope {
         }
     }
 
+    /// Enters the given context, runs a closure, and exits the scope automatically.
+    ///
+    /// This is a convenience method for short synchronous sections where context
+    /// should be active only during closure execution.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use context_logger::{LogContext, LogScope};
+    ///
+    /// let context = LogContext::new().with_record("request_id", "req-123");
+    /// let result = LogScope::in_scope(
+    ///     context,
+    ///     || 40 + 2,
+    /// );
+    ///
+    /// assert_eq!(result, 42);
+    /// ```
+    pub fn in_scope<R>(context: LogContext, f: impl FnOnce() -> R) -> R {
+        let _guard = Self::enter(context);
+        f()
+    }
+
     /// Adds a record to the currently active scope.
     ///
     /// This is useful for adding records dynamically without having
@@ -153,6 +176,34 @@ impl LogScope {
 impl Drop for LogScope {
     fn drop(&mut self) {
         SCOPE_STACK.with(ScopeStack::pop);
+    }
+}
+
+/// Extension trait for [`LogContext`] to run code within a temporary logging scope.
+///
+/// This trait provides ergonomic, method-style access to [`LogScope::in_scope`].
+pub trait LogContextExt: Sized + crate::private::Sealed {
+    /// Enters this context, runs a closure, and exits the scope automatically.
+    ///
+    /// This is equivalent to calling [`LogScope::in_scope`] with `self`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use context_logger::{LogContext, LogContextExt as _};
+    ///
+    /// let result = LogContext::new()
+    ///     .with_record("request_id", "req-123")
+    ///     .in_scope(|| 40 + 2);
+    ///
+    /// assert_eq!(result, 42);
+    /// ```
+    fn in_scope<R>(self, f: impl FnOnce() -> R) -> R;
+}
+
+impl LogContextExt for LogContext {
+    fn in_scope<R>(self, f: impl FnOnce() -> R) -> R {
+        LogScope::in_scope(self, f)
     }
 }
 
@@ -304,5 +355,39 @@ mod tests {
         }
 
         assert!(LogScope::current_context().frame.is_empty());
+    }
+
+    #[test]
+    fn test_in_scope_enters_context_and_returns_result() {
+        assert!(SCOPE_STACK.with(ScopeStack::is_empty));
+
+        let result = LogScope::in_scope(LogContext::new().with_record("record", 42), || {
+            let current_context = LogScope::current_context();
+            assert_eq!(
+                current_context.frame.find("record").unwrap().to_string(),
+                "42"
+            );
+
+            40 + 2
+        });
+
+        assert_eq!(result, 42);
+        assert!(SCOPE_STACK.with(ScopeStack::is_empty));
+    }
+
+    #[test]
+    fn test_log_context_ext_in_scope_enters_context_and_returns_result() {
+        let result = LogContext::new().with_record("record", 42).in_scope(|| {
+            let current_context = LogScope::current_context();
+            assert_eq!(
+                current_context.frame.find("record").unwrap().to_string(),
+                "42"
+            );
+
+            40 + 2
+        });
+
+        assert_eq!(result, 42);
+        assert!(SCOPE_STACK.with(ScopeStack::is_empty));
     }
 }

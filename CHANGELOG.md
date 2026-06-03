@@ -8,6 +8,10 @@ and this project adheres to
 
 ## [Unreleased]
 
+- Added `LogScope::in_scope` — runs synchronous closures within a temporary
+  logging scope and exits it automatically.
+- Added `LogContextExt::in_scope` — ergonomic method-style API for running a
+  closure in a `LogContext` scope.
 - Added `LogScope::current_context` — captures and clones the currently active
   logging context so it can be propagated to spawned threads and async tasks.
   See the new example [`current_context`](examples/current_context.rs).

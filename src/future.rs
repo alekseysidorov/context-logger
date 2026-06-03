@@ -11,7 +11,7 @@ use crate::{LogContext, scope::LogScope};
 /// This trait adds ability to attach a [`LogContext`] for any [`Future`],
 /// ensuring that logs emitted during the future's execution will include
 /// the contextual properties even if the future is polled across different threads.
-pub trait FutureExt: Sized + private::Sealed {
+pub trait FutureExt: Sized + crate::private::Sealed {
     /// Attaches a log context to this future.
     ///
     /// The attached [context](LogContext) will be activated every time the instrumented
@@ -90,12 +90,6 @@ where
 
         result
     }
-}
-
-mod private {
-    pub trait Sealed {}
-
-    impl<F: Future> Sealed for F {}
 }
 
 #[cfg(test)]

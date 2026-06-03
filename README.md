@@ -32,7 +32,7 @@ Then, you can use it in your code:
 <!-- ANCHOR: basic_example -->
 
 ```rust
-use context_logger::{ContextLogger, LogContext, LogScope};
+use context_logger::{ContextLogger, LogContext, LogScope, LogContextExt as _};
 use log::info;
 
 fn main() {
@@ -45,17 +45,15 @@ fn main() {
         .default_record("version", "1.0.0");
     // Initialize the resulting logger.
     context_logger.init(max_level);
-
-    // Create a context
-    let ctx = LogContext::new()
+    // Create a context.
+    let context = LogContext::new()
         .with_record("request_id", "req-123")
         .with_record("user_id", 42);
-
-    // Use the context
-    let _guard = LogScope::enter(ctx);
-
-    // Log with context automatically attached
-    info!("Processing request"); // Will include version=1.0.0 request_id=req-123 and user_id=42
+    // Use the context.
+    context.in_scope(|| {
+        // Log with context automatically attached
+        info!("Processing request"); // Will include version=1.0.0 request_id=req-123 and user_id=42  
+    })
 }
 ```
 

@@ -29,7 +29,12 @@
 
 use std::borrow::Cow;
 
-pub use self::{context::LogContext, future::FutureExt, scope::LogScope, value::LogValue};
+pub use self::{
+    context::LogContext,
+    future::FutureExt,
+    scope::{LogContextExt, LogScope},
+    value::LogValue,
+};
 use crate::{record::LogRecord, stack::SCOPE_STACK};
 
 mod context;
@@ -231,4 +236,11 @@ where
         }
         self.source.visit(visitor)
     }
+}
+
+mod private {
+    pub trait Sealed {}
+
+    impl<F: Future> Sealed for F {}
+    impl Sealed for crate::LogContext {}
 }
