@@ -377,6 +377,8 @@ mod tests {
 
     #[test]
     fn test_log_context_ext_in_scope_enters_context_and_returns_result() {
+        assert!(SCOPE_STACK.with(ScopeStack::is_empty));
+
         let result = LogContext::new().with_record("record", 42).in_scope(|| {
             let current_context = LogScope::current_context();
             assert_eq!(
