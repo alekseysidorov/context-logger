@@ -85,11 +85,16 @@
         devShells.default = pkgs.mkShell {
           nativeBuildInputs =
             with pkgs;
-            runtimeInputs
-            ++ [
+            [
               marksman
               typos-lsp
-            ];
+              crates-lsp
+              yaml-language-server
+              nil
+              nixd
+              tombi
+            ]
+            ++ runtimeInputs;
         };
         # for `nix run`
         packages = (rustDev.mkCheckPackages self.checks.${system}) // {
