@@ -3,7 +3,11 @@
 //! The stack is used by both the synchronous and asynchronous log
 //! context propagation mechanisms.
 
-use std::cell::{Ref, RefCell, RefMut};
+use std::{
+    borrow::Cow,
+    cell::{Ref, RefCell, RefMut},
+    collections::HashMap,
+};
 
 use crate::record::LogRecord;
 
@@ -21,7 +25,7 @@ thread_local! {
 #[derive(Debug, Clone)]
 pub struct ScopeFrame {
     /// Records attached at this scope level.
-    local: Vec<LogRecord>,
+    local: HashMap<Cow<'static, str>, LogRecord>,
 }
 
 /// A stack of scope frames, one per active [`crate::LogScope`].
@@ -31,16 +35,20 @@ pub struct ScopeStack {
 }
 
 impl ScopeFrame {
-    pub const fn new() -> Self {
-        Self { local: Vec::new() }
+    pub fn new() -> Self {
+        Self {
+            local: HashMap::new(),
+        }
     }
 
     pub fn push(&mut self, record: impl Into<LogRecord>) {
-        self.local.push(record.into());
+        let rec: LogRecord = record.into();
+        let key: Cow<'static, str> = Cow::Owned(rec.key().to_string());
+        self.local.insert(key, rec);
     }
 
     pub fn records(&self) -> impl ExactSizeIterator<Item = &LogRecord> + Clone {
-        self.local.iter()
+        self.local.values()
     }
 }
 
@@ -48,12 +56,9 @@ impl ScopeFrame {
 impl ScopeFrame {
     /// Returns the first record with the given key, or `None` if not found.
     ///
-    /// Performs a linear scan over all records in the frame — O(n).
+    /// Direct lookup to the records in the frame : O(1).
     pub fn find(&self, key: &str) -> Option<&crate::LogValue> {
-        self.local
-            .iter()
-            .find(|r| r.key() == key)
-            .map(crate::record::LogRecord::value)
+        self.local.get(key).map(|r| r.value())
     }
 
     pub fn is_empty(&self) -> bool {

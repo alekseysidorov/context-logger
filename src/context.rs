@@ -16,7 +16,7 @@ pub struct LogContext {
 impl LogContext {
     /// Creates a new, empty context.
     #[must_use]
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             frame: ScopeFrame::new(),
         }
