@@ -80,9 +80,17 @@ impl ScopeStack {
     /// # Panics
     ///
     /// If the stack is already borrowed.
-    pub fn push(&self, frame: impl Into<ScopeFrame>) {
-        let frame = frame.into();
-        self.inner.borrow_mut().push(frame);
+    pub fn push(&self, mut context: LogContext) {
+        // Take the inherited records from the top frame, if stack is not empty.
+        // And then merge them into the new frame's inherited records.
+        // This ensures that child scopes inherit records from their parent scopes.
+        context.inherited.extend(
+            self.top()
+                .map(|top| top.0.inherited.clone())
+                .unwrap_or_default(),
+        );
+
+        self.inner.borrow_mut().push(ScopeFrame::from(context));
     }
 
     /// Pops the top scope frame from the stack.

@@ -14,6 +14,11 @@ pub type LogRecordRef<'a> = (&'a Cow<'static, str>, &'a LogValue);
 ///
 /// [`LogRecords`] represents a set of key-value pairs that can be
 /// added to log messages when the log context scope is active.
+///
+/// # Ordering
+///
+/// The order in which records appear is **not guaranteed**. do not rely on any specific
+/// ordering of keys.
 #[derive(Debug, Clone, Default)]
 pub struct LogRecords(pub(crate) HashMap<Cow<'static, str>, LogValue>);
 
@@ -24,10 +29,6 @@ impl LogRecords {
     }
 
     /// Adds a key-value record to this collection, returning the collection for chained calls.
-    ///
-    /// # Ordering
-    ///
-    /// See [`LogRecords::insert`] for details about ordering guarantees.
     ///
     /// # Examples
     ///
@@ -48,13 +49,13 @@ impl LogRecords {
     }
 
     /// Adds a key-value record to this collection.
-    ///
-    /// # Ordering
-    ///
-    /// The order in which records appear is **not guaranteed**. do not rely on any specific
-    /// ordering of keys.
     pub fn insert(&mut self, key: impl Into<Cow<'static, str>>, value: impl Into<LogValue>) {
         self.0.insert(key.into(), value.into());
+    }
+
+    /// Extends this collection with the records from another collection.
+    pub fn extend(&mut self, other: impl IntoIterator<Item = LogRecord>) {
+        self.0.extend(other);
     }
 
     /// Returns an iterator over the records in this collection.
