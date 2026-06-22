@@ -29,20 +29,22 @@
 
 use std::borrow::Cow;
 
-pub use self::{
-    context::LogContext,
-    future::FutureExt,
-    scope::{LogContextExt, LogScope},
-    value::LogValue,
-};
-use crate::{record::LogRecord, stack::SCOPE_STACK};
+use crate::{records::LogRecordRef, stack::SCOPE_STACK};
 
 mod context;
 pub mod future;
-mod record;
+mod records;
 mod scope;
 mod stack;
 mod value;
+
+pub use self::{
+    context::LogContext,
+    future::FutureExt,
+    records::LogRecords,
+    scope::{LogContextExt, LogScope},
+    value::LogValue,
+};
 
 /// A logger wrapper that enhances log records with scope records.
 ///
@@ -66,8 +68,8 @@ mod value;
 ///
 /// // Create a context with properties
 /// let ctx = LogContext::new()
-///     .with_record("request_id", "req-123")
-///     .with_record("user_id", 42);
+///     .local_record("request_id", "req-123")
+///     .local_record("user_id", 42);
 ///
 /// // Use the context while logging
 /// let _guard = LogScope::enter(ctx);
@@ -76,7 +78,7 @@ mod value;
 ///
 /// See [`LogContext`] for more information on how to create and manage scope records.
 pub struct ContextLogger {
-    records: Vec<LogRecord>,
+    records: LogRecords,
     inner: Box<dyn log::Log>,
 }
 
@@ -90,7 +92,7 @@ impl ContextLogger {
         L: log::Log + 'static,
     {
         Self {
-            records: Vec::new(),
+            records: LogRecords::new(),
             inner: Box::new(inner),
         }
     }
@@ -146,7 +148,7 @@ impl ContextLogger {
     /// logger.init(LevelFilter::Info);
     /// // Context records are added after default records
     /// let _guard = LogScope::enter(LogContext::new()
-    ///     .with_record("request_id", "123"));
+    ///     .local_record("request_id", "123"));
     ///
     /// info!("Processing request"); // Will include service="api", version="1.0.0", request_id="123"
     /// ```
@@ -156,7 +158,7 @@ impl ContextLogger {
         key: impl Into<Cow<'static, str>>,
         value: impl Into<LogValue>,
     ) -> Self {
-        self.records.push((key, value).into());
+        self.records.insert(key, value);
         self
     }
 }
@@ -222,17 +224,14 @@ struct SourceWithRecords<'a, I> {
 
 impl<'a, I> log::kv::Source for SourceWithRecords<'a, I>
 where
-    I: Iterator<Item = &'a LogRecord> + Clone,
+    I: Iterator<Item = LogRecordRef<'a>> + Clone,
 {
     fn visit<'kvs>(
         &'kvs self,
         visitor: &mut dyn log::kv::VisitSource<'kvs>,
     ) -> Result<(), log::kv::Error> {
-        for record in self.records.clone() {
-            visitor.visit_pair(
-                log::kv::Key::from_str(record.key()),
-                record.value().as_log_value(),
-            )?;
+        for (key, value) in self.records.clone() {
+            visitor.visit_pair(log::kv::Key::from_str(key), value.as_log_value())?;
         }
         self.source.visit(visitor)
     }

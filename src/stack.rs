@@ -5,7 +5,7 @@
 
 use std::cell::{Ref, RefCell, RefMut};
 
-use crate::record::LogRecord;
+use crate::{LogContext, records::LogRecordRef};
 
 thread_local! {
     /// Thread-local stack for maintaining log scopes.
@@ -18,11 +18,8 @@ thread_local! {
 /// A single frame in the thread-local [`ScopeStack`].
 ///
 /// Pushed when a scope is entered and popped when its guard is dropped.
-#[derive(Debug, Clone)]
-pub struct ScopeFrame {
-    /// Records attached at this scope level.
-    local: Vec<LogRecord>,
-}
+#[derive(Debug, Clone, Default)]
+pub struct ScopeFrame(pub LogContext);
 
 /// A stack of scope frames, one per active [`crate::LogScope`].
 #[derive(Debug)]
@@ -31,34 +28,43 @@ pub struct ScopeStack {
 }
 
 impl ScopeFrame {
-    pub const fn new() -> Self {
-        Self { local: Vec::new() }
+    pub fn new() -> Self {
+        Self(LogContext::new())
     }
 
-    pub fn push(&mut self, record: impl Into<LogRecord>) {
-        self.local.push(record.into());
+    /// Returns an iterator over the all records in this scope frame.
+    pub fn records(&self) -> impl ExactSizeIterator<Item = LogRecordRef<'_>> + Clone {
+        self.0.local.iter()
     }
+}
 
-    pub fn records(&self) -> impl ExactSizeIterator<Item = &LogRecord> + Clone {
-        self.local.iter()
+impl From<LogContext> for ScopeFrame {
+    fn from(context: LogContext) -> Self {
+        Self(context)
+    }
+}
+
+impl From<ScopeFrame> for LogContext {
+    fn from(frame: ScopeFrame) -> Self {
+        frame.0
     }
 }
 
 #[cfg(test)]
 impl ScopeFrame {
-    /// Returns the first record with the given key, or `None` if not found.
-    ///
-    /// Performs a linear scan over all records in the frame — O(n).
-    pub fn find(&self, key: &str) -> Option<&crate::LogValue> {
-        self.local
-            .iter()
-            .find(|r| r.key() == key)
-            .map(crate::record::LogRecord::value)
-    }
+    // /// Returns the first record with the given key, or `None` if not found.
+    // ///
+    // /// Performs a linear scan over all records in the frame — O(n).
+    // pub fn find(&self, key: &str) -> Option<&crate::LogValue> {
+    //     self.local
+    //         .iter()
+    //         .find(|r| r.key() == key)
+    //         .map(crate::record::LogRecord::value)
+    // }
 
-    pub fn is_empty(&self) -> bool {
-        self.local.is_empty()
-    }
+    // pub fn is_empty(&self) -> bool {
+    //     self.local.is_empty()
+    // }
 }
 
 impl ScopeStack {
@@ -74,7 +80,8 @@ impl ScopeStack {
     /// # Panics
     ///
     /// If the stack is already borrowed.
-    pub fn push(&self, frame: ScopeFrame) {
+    pub fn push(&self, frame: impl Into<ScopeFrame>) {
+        let frame = frame.into();
         self.inner.borrow_mut().push(frame);
     }
 

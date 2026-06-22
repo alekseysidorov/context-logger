@@ -29,11 +29,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     log::info!("Initialized context logger");
 
     // Create a new context with properties.
-    let log_context = LogContext::new().with_record("user_id", "12345");
+    let log_context = LogContext::new().local_record("user_id", "12345");
     let first_future = async move {
         log::info!("Logging in");
         // Create a nested context with additional properties
-        let log_context = LogContext::new().with_record(
+        let log_context = LogContext::new().local_record(
             "action",
             LogValue::serde(Operation {
                 action: "login".to_string(),
@@ -53,10 +53,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .in_log_context(log_context);
 
     let log_context = LogContext::new()
-        .with_record("name", "Alice")
-        .with_record("age", 25)
-        .with_record("married", true)
-        .with_record("email", "alice@example.com");
+        .local_record("name", "Alice")
+        .local_record("age", 25)
+        .local_record("married", true)
+        .local_record("email", "alice@example.com");
     let second_future = async move {
         tokio::task::yield_now().await;
 
@@ -67,9 +67,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .in_log_context(log_context);
 
     let log_context = LogContext::new()
-        .with_record("name", "Bob")
-        .with_record("age", 30)
-        .with_record("email", "bob@example.com");
+        .local_record("name", "Bob")
+        .local_record("age", 30)
+        .local_record("email", "bob@example.com");
     let third_future = tokio::spawn(
         async move {
             tokio::task::yield_now().await;
@@ -93,9 +93,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     res?;
 
     let context = LogContext::new()
-        .with_record("name", "Charlie")
-        .with_record("age", 35)
-        .with_record("email", "charlie@example.com");
+        .local_record("name", "Charlie")
+        .local_record("age", 35)
+        .local_record("email", "charlie@example.com");
 
     let _guard = LogScope::enter(context);
 

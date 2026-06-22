@@ -18,7 +18,7 @@ use crate::{
 /// use context_logger::{LogContext, LogScope};
 ///
 /// // Create a context with some data
-/// let context = LogContext::new().with_record("user_id", 123);
+/// let context = LogContext::new().local_record("user_id", 123);
 ///
 /// // Enter the context (pushes to stack)
 /// let guard = LogScope::enter(context);
@@ -52,8 +52,8 @@ impl LogScope {
     ///
     /// async fn my_async_fn() {
     ///     let ctx = LogContext::new()
-    ///         .with_record("request_id", "req-123")
-    ///         .with_record("user_id", 42);
+    ///         .local_record("request_id", "req-123")
+    ///         .local_record("user_id", 42);
     ///     // WARNING: This context will remain active until this
     ///     // guard is dropped...
     ///     let _guard = LogScope::enter(ctx);
@@ -66,7 +66,7 @@ impl LogScope {
     /// Please use the [`crate::FutureExt::in_log_context`] instead.
     #[must_use]
     pub fn enter(context: LogContext) -> Self {
-        SCOPE_STACK.with(|stack| stack.push(context.frame));
+        SCOPE_STACK.with(|stack| stack.push(context));
         Self {
             _marker: PhantomData,
         }
@@ -82,7 +82,7 @@ impl LogScope {
     /// ```
     /// use context_logger::{LogContext, LogScope};
     ///
-    /// let context = LogContext::new().with_record("request_id", "req-123");
+    /// let context = LogContext::new().local_record("request_id", "req-123");
     /// let result = LogScope::in_scope(
     ///     context,
     ///     || 40 + 2,
@@ -122,15 +122,14 @@ impl LogScope {
     /// }
     ///
     /// let _guard = LogScope::enter(LogContext::new()
-    ///     .with_record("request_id", "req-123"));
+    ///     .local_record("request_id", "req-123"));
     ///
     /// process_request(); // Will log with both request_id and processing_time_ms
     /// ```
     pub fn add_record(key: impl Into<Cow<'static, str>>, value: impl Into<LogValue>) {
         SCOPE_STACK.with(|stack| {
             if let Some(mut top) = stack.top_mut() {
-                let record = (key.into(), value.into());
-                top.push(record);
+                top.0.local.insert(key, value);
             }
         });
     }
@@ -153,11 +152,7 @@ impl LogScope {
     #[must_use]
     pub fn current_context() -> LogContext {
         SCOPE_STACK
-            .with(|stack| {
-                stack.top().map(|frame| LogContext {
-                    frame: frame.clone(),
-                })
-            })
+            .with(|stack| stack.top().map(|frame| frame.clone().into()))
             .unwrap_or_default()
     }
 
@@ -169,7 +164,7 @@ impl LogScope {
         let frame = SCOPE_STACK
             .with(ScopeStack::pop)
             .expect("bug in LogScope::exit: expected a scope frame to exist when popping on exit");
-        LogContext { frame }
+        frame.into()
     }
 }
 
@@ -193,7 +188,7 @@ pub trait LogContextExt: Sized + crate::private::Sealed {
     /// use context_logger::{LogContext, LogContextExt as _};
     ///
     /// let result = LogContext::new()
-    ///     .with_record("request_id", "req-123")
+    ///     .local_record("request_id", "req-123")
     ///     .in_scope(|| 40 + 2);
     ///
     /// assert_eq!(result, 42);
@@ -220,7 +215,7 @@ mod tests {
 
     #[test]
     fn test_log_context_guard_enter() {
-        let context = LogContext::new().with_record("simple", 42);
+        let context = LogContext::new().local_record("simple", 42);
         // Make sure the context stack is empty before entering the context.
         assert_eq!(SCOPE_STACK.with(ScopeStack::is_empty), true);
 
@@ -238,7 +233,7 @@ mod tests {
 
     #[test]
     fn test_log_context_nested_guards() {
-        let outer_context = LogContext::new().with_record("simple_record", "outer_value");
+        let outer_context = LogContext::new().local_record("simple_record", "outer_value");
         assert_eq!(SCOPE_STACK.with(ScopeStack::len), 0);
 
         let outer_guard = LogScope::enter(outer_context);
@@ -248,14 +243,14 @@ mod tests {
         );
 
         SCOPE_STACK.with(|stack| {
-            let frame = stack.top().unwrap();
+            let context = &stack.top().unwrap().0;
             assert_eq!(
-                frame.find("simple_record").unwrap().to_string(),
+                context.local.0.get("simple_record").unwrap().to_string(),
                 "outer_value"
             );
         });
 
-        let inner_context = LogContext::new().with_record("simple_record", "inner_value");
+        let inner_context = LogContext::new().local_record("simple_record", "inner_value");
         {
             let inner_guard = LogScope::enter(inner_context);
             // Test log context after inner guard is entered.
@@ -263,7 +258,7 @@ mod tests {
             SCOPE_STACK.with(|stack| {
                 let frame = stack.top().unwrap();
                 assert_eq!(
-                    frame.find("simple_record").unwrap().to_string(),
+                    frame.0.local.find("simple_record").unwrap().to_string(),
                     "inner_value"
                 );
             });
@@ -278,7 +273,7 @@ mod tests {
         SCOPE_STACK.with(|stack| {
             let frame = stack.top().unwrap();
             assert_eq!(
-                frame.find("simple_record").unwrap().to_string(),
+                frame.0.local.find("simple_record").unwrap().to_string(),
                 "outer_value"
             );
         });
@@ -289,11 +284,11 @@ mod tests {
 
     #[test]
     fn test_log_context_multithread() {
-        let local_context = LogContext::new().with_record("simple_record", "main");
+        let local_context = LogContext::new().local_record("simple_record", "main");
         let local_guard = LogScope::enter(local_context);
 
         let first_thread_handle = std::thread::spawn(|| {
-            let inner_context = LogContext::new().with_record("simple_record", "first_thread");
+            let inner_context = LogContext::new().local_record("simple_record", "first_thread");
             let inner_guard = LogScope::enter(inner_context);
 
             // Test log context after inner guard is entered.
@@ -301,7 +296,7 @@ mod tests {
             SCOPE_STACK.with(|stack| {
                 let frame = stack.top().unwrap();
                 assert_eq!(
-                    frame.find("simple_record").unwrap().to_string(),
+                    frame.0.local.find("simple_record").unwrap().to_string(),
                     "first_thread"
                 );
             });
@@ -309,7 +304,7 @@ mod tests {
             drop(inner_guard);
         });
         let second_thread_handle = std::thread::spawn(|| {
-            let inner_context = LogContext::new().with_record("simple_record", "second_thread");
+            let inner_context = LogContext::new().local_record("simple_record", "second_thread");
             let inner_guard = LogScope::enter(inner_context);
 
             // Test log context after inner guard is entered.
@@ -317,7 +312,7 @@ mod tests {
             SCOPE_STACK.with(|stack| {
                 let frame = stack.top().unwrap();
                 assert_eq!(
-                    frame.find("simple_record").unwrap().to_string(),
+                    frame.0.local.find("simple_record").unwrap().to_string(),
                     "second_thread"
                 );
             });
@@ -330,7 +325,10 @@ mod tests {
 
         SCOPE_STACK.with(|stack| {
             let frame = stack.top().unwrap();
-            assert_eq!(frame.find("simple_record").unwrap().to_string(), "main");
+            assert_eq!(
+                frame.0.local.find("simple_record").unwrap().to_string(),
+                "main"
+            );
         });
         drop(local_guard);
     }
@@ -338,33 +336,33 @@ mod tests {
     #[test]
     fn test_current_context_empty_scope() {
         let context = LogScope::current_context();
-        assert!(context.frame.is_empty());
+        assert!(context.is_empty());
     }
 
     #[test]
     fn test_current_context_with_scope() {
-        let context = LogContext::new().with_record("record", 42);
+        let context = LogContext::new().local_record("record", 42);
         {
             let _guard = LogScope::enter(context);
 
             let current_context = LogScope::current_context();
             assert_eq!(
-                current_context.frame.find("record").unwrap().to_string(),
+                current_context.local.find("record").unwrap().to_string(),
                 "42"
             );
         }
 
-        assert!(LogScope::current_context().frame.is_empty());
+        assert!(LogScope::current_context().is_empty());
     }
 
     #[test]
     fn test_in_scope_enters_context_and_returns_result() {
         assert!(SCOPE_STACK.with(ScopeStack::is_empty));
 
-        let result = LogScope::in_scope(LogContext::new().with_record("record", 42), || {
+        let result = LogScope::in_scope(LogContext::new().local_record("record", 42), || {
             let current_context = LogScope::current_context();
             assert_eq!(
-                current_context.frame.find("record").unwrap().to_string(),
+                current_context.local.find("record").unwrap().to_string(),
                 "42"
             );
 
@@ -379,10 +377,10 @@ mod tests {
     fn test_log_context_ext_in_scope_enters_context_and_returns_result() {
         assert!(SCOPE_STACK.with(ScopeStack::is_empty));
 
-        let result = LogContext::new().with_record("record", 42).in_scope(|| {
+        let result = LogContext::new().local_record("record", 42).in_scope(|| {
             let current_context = LogScope::current_context();
             assert_eq!(
-                current_context.frame.find("record").unwrap().to_string(),
+                current_context.local.find("record").unwrap().to_string(),
                 "42"
             );
 

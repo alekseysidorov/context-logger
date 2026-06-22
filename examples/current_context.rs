@@ -23,8 +23,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create a new context with properties.
     let log_context = LogContext::new()
-        .with_record("user_id", "12345")
-        .with_record("tag", "example");
+        .local_record("user_id", "12345")
+        .local_record("tag", "example");
 
     count_with_tokio_spawn(7).in_log_context(log_context).await;
 
