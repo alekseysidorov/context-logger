@@ -83,6 +83,7 @@ impl ScopeStack {
     pub fn push(&self, mut context: LogContext) {
         // Take the inherited records from the top frame, if stack is not empty.
         // And then merge them into the new frame's inherited records.
+        //
         // This ensures that child scopes inherit records from their parent scopes.
         context.inherited.extend(
             self.top()

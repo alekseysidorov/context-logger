@@ -29,13 +29,12 @@
 
 use std::borrow::Cow;
 
-use crate::{records::LogRecordRef, stack::SCOPE_STACK};
+use crate::records::LogRecordRef;
 
 mod context;
 pub mod future;
 mod records;
 mod scope;
-mod stack;
 mod value;
 
 pub use self::{
@@ -175,7 +174,7 @@ impl log::Log for ContextLogger {
     }
 
     fn log(&self, record: &log::Record) {
-        let error = SCOPE_STACK.try_with(|stack| {
+        let error = scope::stack::SCOPE_STACK.try_with(|stack| {
             // Only the top frame is read here intentionally: when scope inheritance is
             // implemented (see issue #16), inherited records from outer scopes will be
             // automatically copied into the new top frame on `enter()`, so the top frame

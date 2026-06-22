@@ -100,7 +100,7 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::FutureExt;
-    use crate::{LogContext, LogValue, stack::SCOPE_STACK};
+    use crate::{LogContext, LogValue, scope::stack::SCOPE_STACK};
 
     fn find_local_value(key: &str) -> Option<String> {
         SCOPE_STACK.with(|stack| {

@@ -2,10 +2,10 @@
 
 use std::{borrow::Cow, marker::PhantomData};
 
-use crate::{
-    LogContext, LogValue,
-    stack::{SCOPE_STACK, ScopeStack},
-};
+use self::stack::{SCOPE_STACK, ScopeStack};
+use crate::{LogContext, LogValue};
+
+pub mod stack;
 
 /// A guard that represents an active logging context on the current thread's scope stack.
 ///
@@ -142,7 +142,7 @@ impl LogScope {
     /// # Example
     ///
     /// ```no_run
-    #[doc = include_str!("../examples/current_context.rs")]
+    #[doc = include_str!("../../examples/current_context.rs")]
     /// ```
     ///
     /// # Notes
@@ -208,7 +208,6 @@ mod tests {
     use static_assertions::assert_not_impl_any;
 
     use super::*;
-    use crate::stack::SCOPE_STACK;
 
     // LogScope manages thread-local state and must never be Send.
     assert_not_impl_any!(LogScope: Send);
