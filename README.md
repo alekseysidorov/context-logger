@@ -47,7 +47,9 @@ fn main() {
     context_logger.init(max_level);
     // Create a context.
     let context = LogContext::new()
-        .local_record("request_id", "req-123")
+        // Record that will be inherited by child contexts.
+        .inherited_record("request_id", "req-123")
+        // Local record that will only be present in this context.
         .local_record("user_id", 42);
     // Use the context.
     context.in_scope(|| {
