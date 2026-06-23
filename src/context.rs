@@ -52,9 +52,9 @@ impl LogContext {
         self
     }
 
-    /// Returns `true` if the both local and inherited records are empty.
+    /// Returns `true` if both local and inherited records are empty.
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.local.0.is_empty()
+        self.local.is_empty() && self.inherited.is_empty()
     }
 }
