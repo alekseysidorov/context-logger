@@ -27,7 +27,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create a new context with properties
     {
-        let _guard = LogScope::enter(LogContext::new().local_record("user_id", "12345"));
+        let _guard = LogScope::enter(
+            LogContext::new()
+                .inherited_record("example", "sync")
+                .local_record("user_id", "12345"),
+        );
 
         log::info!("Logging in");
 

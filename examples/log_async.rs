@@ -29,7 +29,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     log::info!("Initialized context logger");
 
     // Create a new context with properties.
-    let log_context = LogContext::new().local_record("user_id", "12345");
+    let log_context = LogContext::new()
+        .inherited_record("thread_name", "first_future")
+        .local_record("user_id", "12345");
     let first_future = async move {
         log::info!("Logging in");
         // Create a nested context with additional properties
@@ -53,6 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .in_log_context(log_context);
 
     let log_context = LogContext::new()
+        .inherited_record("thread_name", "second_future")
         .local_record("name", "Alice")
         .local_record("age", 25)
         .local_record("married", true)
@@ -67,6 +70,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .in_log_context(log_context);
 
     let log_context = LogContext::new()
+        .inherited_record("thread_name", "third_future")
         .local_record("name", "Bob")
         .local_record("age", 30)
         .local_record("email", "bob@example.com");
