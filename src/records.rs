@@ -71,13 +71,6 @@ impl LogRecords {
     }
 }
 
-#[cfg(test)]
-impl LogRecords {
-    pub(crate) fn find(&self, key: impl AsRef<str>) -> Option<&LogValue> {
-        self.0.get(&Cow::Owned(key.as_ref().to_owned()))
-    }
-}
-
 impl<'a> IntoIterator for &'a LogRecords {
     type Item = LogRecordRef<'a>;
     type IntoIter = LogRecordsIter<'a>;
@@ -93,5 +86,24 @@ impl IntoIterator for LogRecords {
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
+    }
+}
+
+#[cfg(test)]
+impl LogRecords {
+    /// Returns a reference to the value associated with the given key, if it exists.
+    pub(crate) fn find(&self, key: impl AsRef<str>) -> Option<&LogValue> {
+        self.0.get(&Cow::Owned(key.as_ref().to_owned()))
+    }
+}
+
+#[cfg(test)]
+impl std::ops::Index<&str> for LogRecords {
+    type Output = LogValue;
+
+    fn index(&self, index: &str) -> &Self::Output {
+        self.0
+            .get(&Cow::Owned(index.to_owned()))
+            .expect("No record found for the given key")
     }
 }

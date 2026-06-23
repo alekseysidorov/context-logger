@@ -50,23 +50,6 @@ impl From<ScopeFrame> for LogContext {
     }
 }
 
-#[cfg(test)]
-impl ScopeFrame {
-    // /// Returns the first record with the given key, or `None` if not found.
-    // ///
-    // /// Performs a linear scan over all records in the frame — O(n).
-    // pub fn find(&self, key: &str) -> Option<&crate::LogValue> {
-    //     self.local
-    //         .iter()
-    //         .find(|r| r.key() == key)
-    //         .map(crate::record::LogRecord::value)
-    // }
-
-    // pub fn is_empty(&self) -> bool {
-    //     self.local.is_empty()
-    // }
-}
-
 impl ScopeStack {
     /// Creates a new, empty scope stack.
     pub const fn new() -> Self {
@@ -140,10 +123,12 @@ impl Default for ScopeStack {
 
 #[cfg(test)]
 impl ScopeStack {
+    /// Returns the number of scope frames on the stack.
     pub fn len(&self) -> usize {
         self.inner.borrow().len()
     }
 
+    /// Returns `true` if the stack is empty.
     pub fn is_empty(&self) -> bool {
         self.inner.borrow().is_empty()
     }

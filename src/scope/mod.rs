@@ -324,10 +324,7 @@ mod tests {
 
         SCOPE_STACK.with(|stack| {
             let frame = stack.top().unwrap();
-            assert_eq!(
-                frame.0.local.find("simple_record").unwrap().to_string(),
-                "main"
-            );
+            assert_eq!(frame.0.local["simple_record"].to_string(), "main");
         });
         drop(local_guard);
     }
@@ -345,10 +342,7 @@ mod tests {
             let _guard = LogScope::enter(context);
 
             let current_context = LogScope::current_context();
-            assert_eq!(
-                current_context.local.find("record").unwrap().to_string(),
-                "42"
-            );
+            assert_eq!(current_context.local["record"].to_string(), "42");
         }
 
         assert!(LogScope::current_context().is_empty());
@@ -360,10 +354,7 @@ mod tests {
 
         let result = LogScope::in_scope(LogContext::new().local_record("record", 42), || {
             let current_context = LogScope::current_context();
-            assert_eq!(
-                current_context.local.find("record").unwrap().to_string(),
-                "42"
-            );
+            assert_eq!(current_context.local["record"].to_string(), "42");
 
             40 + 2
         });
@@ -378,15 +369,37 @@ mod tests {
 
         let result = LogContext::new().local_record("record", 42).in_scope(|| {
             let current_context = LogScope::current_context();
-            assert_eq!(
-                current_context.local.find("record").unwrap().to_string(),
-                "42"
-            );
+            assert_eq!(current_context.local["record"].to_string(), "42");
 
             40 + 2
         });
 
         assert_eq!(result, 42);
         assert!(SCOPE_STACK.with(ScopeStack::is_empty));
+    }
+
+    #[test]
+    fn test_log_context_inherited_records() {
+        LogContext::new()
+            .local_record("name", "Ann")
+            .inherited_record("tag", "42")
+            .inherited_record("target", "root")
+            .in_scope(|| {
+                let ctx = LogScope::current_context();
+
+                assert_eq!(ctx.local["name"].to_string(), "Ann");
+                assert_eq!(ctx.inherited["tag"].to_string(), "42");
+                assert_eq!(ctx.inherited["target"].to_string(), "root");
+
+                LogContext::new()
+                    .local_record("target", "nested")
+                    .in_scope(|| {
+                        let ctx = LogScope::current_context();
+
+                        assert_eq!(ctx.local["target"].to_string(), "nested");
+                        assert_eq!(ctx.inherited["tag"].to_string(), "42");
+                        assert!(ctx.local.find("name").is_none());
+                    });
+            });
     }
 }
