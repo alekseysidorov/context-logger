@@ -17,7 +17,7 @@ pub type LogRecordRef<'a> = (&'a Cow<'static, str>, &'a LogValue);
 ///
 /// # Ordering
 ///
-/// The order in which records appear is **not guaranteed**. do not rely on any specific
+/// The order in which records appear is **not guaranteed**. Do not rely on any specific
 /// ordering of keys.
 #[derive(Debug, Clone, Default)]
 pub struct LogRecords(pub(crate) HashMap<Cow<'static, str>, LogValue>);
