@@ -33,8 +33,8 @@ impl ScopeFrame {
     }
 
     /// Returns an iterator over the all records in this scope frame.
-    pub fn records(&self) -> impl ExactSizeIterator<Item = LogRecordRef<'_>> + Clone {
-        self.0.local.iter()
+    pub fn records(&self) -> impl Iterator<Item = LogRecordRef<'_>> + Clone {
+        self.0.inherited.iter().chain(self.0.local.iter())
     }
 }
 
@@ -131,5 +131,28 @@ impl ScopeStack {
     /// Returns `true` if the stack is empty.
     pub fn is_empty(&self) -> bool {
         self.inner.borrow().is_empty()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::LogRecords;
+
+    fn record_to_string(record: LogRecordRef<'_>) -> (&str, String) {
+        (record.0.as_ref(), record.1.to_string())
+    }
+
+    #[test]
+    fn test_scope_frame_records_with_inherited() {
+        let frame = ScopeFrame(LogContext {
+            local: LogRecords::new().field("name", "bob"),
+            inherited: LogRecords::new().field("tag", 42),
+        });
+
+        let records: Vec<_> = frame.records().map(record_to_string).collect();
+
+        assert_eq!(records.len(), 2);
+        assert_eq!(records[0], ("tag", "42".to_string()));
     }
 }

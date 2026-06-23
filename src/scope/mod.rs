@@ -221,7 +221,7 @@ mod tests {
         let guard = LogScope::enter(context);
         // Check that the record was added to the top context.
         assert_eq!(
-            SCOPE_STACK.with(|stack| stack.top().unwrap().records().len()),
+            SCOPE_STACK.with(|stack| stack.top().unwrap().records().count()),
             1
         );
 
@@ -237,7 +237,7 @@ mod tests {
 
         let outer_guard = LogScope::enter(outer_context);
         assert_eq!(
-            SCOPE_STACK.with(|stack| stack.top().unwrap().records().len()),
+            SCOPE_STACK.with(|stack| stack.top().unwrap().records().count()),
             1
         );
 
@@ -266,7 +266,7 @@ mod tests {
         }
         // Test log context after inner guard is dropped.
         assert_eq!(
-            SCOPE_STACK.with(|stack| stack.top().unwrap().records().len()),
+            SCOPE_STACK.with(|stack| stack.top().unwrap().records().count()),
             1
         );
         SCOPE_STACK.with(|stack| {
@@ -401,5 +401,74 @@ mod tests {
                         assert!(ctx.local.find("name").is_none());
                     });
             });
+    }
+
+    // Edge case: panic in child scope doesn't break parent stack
+    #[test]
+    fn test_panic_in_child_scope_does_not_break_parent() {
+        // Push parent frame onto the stack
+        let outer_context = LogContext::new()
+            .inherited_record("outer", "val")
+            .local_record("outer_local", "ol");
+        {
+            let _parent_guard = LogScope::enter(outer_context);
+            // Verify parent is on the stack
+            assert_eq!(SCOPE_STACK.with(ScopeStack::len), 1);
+
+            // Panic in inner scope — the child guard's Drop must run
+            let result = std::panic::catch_unwind(|| {
+                LogContext::new().in_scope(|| panic!("inner panic"));
+            });
+
+            assert!(result.is_err());
+        }
+
+        // Stack must be clean: parent guard dropped + child guard's Drop ran
+        assert_eq!(SCOPE_STACK.with(ScopeStack::len), 0);
+    }
+
+    // Edge case: two siblings from one parent each get their own inherited copy
+    #[test]
+    fn test_sibling_scopes_get_independent_inherited_copies() {
+        let parent_ctx = LogContext::new()
+            .inherited_record("parent_key", "pv")
+            .local_record("parent_local", "pl");
+
+        {
+            let _g1 = LogScope::enter(parent_ctx);
+            assert_eq!(SCOPE_STACK.with(ScopeStack::len), 1);
+
+            // child1: inherits parent's `parent_key`, adds its own `sibling` and local
+            let child1_result = LogContext::new()
+                .inherited_record("sibling", "child1")
+                .local_record("only_in_child1", "c1")
+                .in_scope(|| {
+                    let c = LogScope::current_context();
+                    format!(
+                        "{}|{}",
+                        c.inherited["parent_key"], c.local["only_in_child1"]
+                    )
+                });
+            assert_eq!(child1_result, "pv|c1");
+
+            // after child1 scope ends, parent is still the only frame on the stack
+            assert_eq!(SCOPE_STACK.with(ScopeStack::len), 1);
+
+            // child2: also inherits parent's `parent_key`, but its own `sibling` wins
+            let c2_result = LogContext::new()
+                .inherited_record("sibling", "child2")
+                .local_record("only_in_child2", "c2")
+                .in_scope(|| {
+                    let c = LogScope::current_context();
+                    format!("{}|{}", c.inherited["parent_key"], c.inherited["sibling"])
+                });
+            assert_eq!(c2_result, "pv|child2");
+
+            // parent state unchanged after child2 scope ends
+            assert_eq!(SCOPE_STACK.with(ScopeStack::len), 1);
+        }
+
+        // After parent scope: stack is empty
+        assert_eq!(SCOPE_STACK.with(ScopeStack::len), 0);
     }
 }
