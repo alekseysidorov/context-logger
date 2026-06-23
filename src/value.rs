@@ -70,7 +70,7 @@ impl From<LogValueInner> for LogValue {
 
 impl LogValue {
     /// Creates a null log value.
-    #[allow(clippy::must_use_candidate)]
+    #[must_use]
     pub fn null() -> Self {
         LogValueInner::Null.into()
     }

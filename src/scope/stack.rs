@@ -58,7 +58,8 @@ impl ScopeStack {
         }
     }
 
-    /// Pushes a new scope frame onto the stack.
+    /// Pushes a new scope frame onto the stack, merging inherited records from
+    /// the current top frame into the new context's inherited records.
     ///
     /// # Panics
     ///

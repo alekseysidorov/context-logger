@@ -2,11 +2,8 @@ use std::{borrow::Cow, collections::HashMap};
 
 use crate::LogValue;
 
-/// Iterator over log records in a [`LogRecords`] collection.
 pub type LogRecordsIter<'a> = std::collections::hash_map::Iter<'a, Cow<'static, str>, LogValue>;
-/// Iterator over log records in a [`LogRecords`] collection that takes ownership of the collection.
 pub type LogRecordsIntoIter = std::collections::hash_map::IntoIter<Cow<'static, str>, LogValue>;
-
 pub type LogRecord = (Cow<'static, str>, LogValue);
 pub type LogRecordRef<'a> = (&'a Cow<'static, str>, &'a LogValue);
 
