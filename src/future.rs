@@ -110,7 +110,7 @@ mod tests {
     }
 
     async fn check_nested_different_contexts(answer: u32) {
-        let context = LogContext::new().local_record("answer", answer);
+        let context = LogContext::new().with_local_record("answer", answer);
 
         async {
             tokio::task::yield_now().await;
@@ -119,7 +119,7 @@ mod tests {
                 tokio::task::yield_now().await;
                 assert_eq!(find_local_value("answer"), Some("None".to_string()));
             }
-            .in_log_context(LogContext::new().local_record("answer", LogValue::null()))
+            .in_log_context(LogContext::new().with_local_record("answer", LogValue::null()))
             .await;
 
             tokio::task::yield_now().await;
@@ -133,7 +133,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_future_with_context() {
-        let context = LogContext::new().local_record("answer", 42);
+        let context = LogContext::new().with_local_record("answer", 42);
 
         async {
             tokio::task::yield_now().await;
@@ -147,7 +147,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_panicked_future() {
-        let context = LogContext::new().local_record("answer", 42);
+        let context = LogContext::new().with_local_record("answer", 42);
 
         AssertUnwindSafe(
             async {
@@ -165,7 +165,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_nested_future_with_common_context() {
-        let context = LogContext::new().local_record("answer", 42);
+        let context = LogContext::new().with_local_record("answer", 42);
 
         async {
             tokio::task::yield_now().await;

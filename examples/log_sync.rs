@@ -29,15 +29,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     {
         let _guard = LogScope::enter(
             LogContext::new()
-                .inherited_record("example", "sync")
-                .local_record("user_id", "12345"),
+                .with_inherited_record("example", "sync")
+                .with_local_record("user_id", "12345"),
         );
 
         log::info!("Logging in");
 
         // Create a nested context with additional properties
         {
-            let context = LogContext::new().local_record(
+            let context = LogContext::new().with_local_record(
                 "action",
                 LogValue::serde(Operation {
                     action: "login".to_string(),

@@ -30,7 +30,7 @@ impl LogContext {
     ///
     /// See [`LogRecords`] for more details about log records.
     #[must_use]
-    pub fn local_record(
+    pub fn with_local_record(
         mut self,
         key: impl Into<Cow<'static, str>>,
         value: impl Into<LogValue>,
@@ -43,7 +43,7 @@ impl LogContext {
     ///
     /// See [`LogRecords`] for more details about log records.
     #[must_use]
-    pub fn inherited_record(
+    pub fn with_inherited_record(
         mut self,
         key: impl Into<Cow<'static, str>>,
         value: impl Into<LogValue>,

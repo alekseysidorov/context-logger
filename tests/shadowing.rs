@@ -18,14 +18,14 @@ fn test_inherited_records_shadowing() {
     });
 
     LogContext::new()
-        .inherited_record("answer", 42)
-        .inherited_record("shadow", false)
-        .inherited_record("inherited_shadow", "parent")
+        .with_inherited_record("answer", 42)
+        .with_inherited_record("shadow", false)
+        .with_inherited_record("inherited_shadow", "parent")
         .in_scope(|| {
             LogContext::new()
-                .inherited_record("inherited_shadow", "child")
-                .local_record("name", "Robin")
-                .local_record("shadow", true)
+                .with_inherited_record("inherited_shadow", "child")
+                .with_local_record("name", "Robin")
+                .with_local_record("shadow", true)
                 .in_scope(|| {
                     log::info!("Ipsum dolor sit amet, consectetur adipiscing elit");
                 });

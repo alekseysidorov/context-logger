@@ -214,7 +214,7 @@ mod tests {
 
     #[test]
     fn test_log_context_guard_enter() {
-        let context = LogContext::new().local_record("simple", 42);
+        let context = LogContext::new().with_local_record("simple", 42);
         // Make sure the context stack is empty before entering the context.
         assert_eq!(SCOPE_STACK.with(ScopeStack::is_empty), true);
 
@@ -232,7 +232,7 @@ mod tests {
 
     #[test]
     fn test_log_context_nested_guards() {
-        let outer_context = LogContext::new().local_record("simple_record", "outer_value");
+        let outer_context = LogContext::new().with_local_record("simple_record", "outer_value");
         assert_eq!(SCOPE_STACK.with(ScopeStack::len), 0);
 
         let outer_guard = LogScope::enter(outer_context);
@@ -249,7 +249,7 @@ mod tests {
             );
         });
 
-        let inner_context = LogContext::new().local_record("simple_record", "inner_value");
+        let inner_context = LogContext::new().with_local_record("simple_record", "inner_value");
         {
             let inner_guard = LogScope::enter(inner_context);
             // Test log context after inner guard is entered.
@@ -283,11 +283,12 @@ mod tests {
 
     #[test]
     fn test_log_context_multithread() {
-        let local_context = LogContext::new().local_record("simple_record", "main");
+        let local_context = LogContext::new().with_local_record("simple_record", "main");
         let local_guard = LogScope::enter(local_context);
 
         let first_thread_handle = std::thread::spawn(|| {
-            let inner_context = LogContext::new().local_record("simple_record", "first_thread");
+            let inner_context =
+                LogContext::new().with_local_record("simple_record", "first_thread");
             let inner_guard = LogScope::enter(inner_context);
 
             // Test log context after inner guard is entered.
@@ -303,7 +304,8 @@ mod tests {
             drop(inner_guard);
         });
         let second_thread_handle = std::thread::spawn(|| {
-            let inner_context = LogContext::new().local_record("simple_record", "second_thread");
+            let inner_context =
+                LogContext::new().with_local_record("simple_record", "second_thread");
             let inner_guard = LogScope::enter(inner_context);
 
             // Test log context after inner guard is entered.
@@ -337,7 +339,7 @@ mod tests {
 
     #[test]
     fn test_current_context_with_scope() {
-        let context = LogContext::new().local_record("record", 42);
+        let context = LogContext::new().with_local_record("record", 42);
         {
             let _guard = LogScope::enter(context);
 
@@ -352,7 +354,7 @@ mod tests {
     fn test_in_scope_enters_context_and_returns_result() {
         assert!(SCOPE_STACK.with(ScopeStack::is_empty));
 
-        let result = LogScope::in_scope(LogContext::new().local_record("record", 42), || {
+        let result = LogScope::in_scope(LogContext::new().with_local_record("record", 42), || {
             let current_context = LogScope::current_context();
             assert_eq!(current_context.local["record"].to_string(), "42");
 
@@ -367,12 +369,14 @@ mod tests {
     fn test_log_context_ext_in_scope_enters_context_and_returns_result() {
         assert!(SCOPE_STACK.with(ScopeStack::is_empty));
 
-        let result = LogContext::new().local_record("record", 42).in_scope(|| {
-            let current_context = LogScope::current_context();
-            assert_eq!(current_context.local["record"].to_string(), "42");
+        let result = LogContext::new()
+            .with_local_record("record", 42)
+            .in_scope(|| {
+                let current_context = LogScope::current_context();
+                assert_eq!(current_context.local["record"].to_string(), "42");
 
-            40 + 2
-        });
+                40 + 2
+            });
 
         assert_eq!(result, 42);
         assert!(SCOPE_STACK.with(ScopeStack::is_empty));
@@ -381,9 +385,9 @@ mod tests {
     #[test]
     fn test_log_context_inherited_records() {
         LogContext::new()
-            .local_record("name", "Ann")
-            .inherited_record("tag", "42")
-            .inherited_record("target", "root")
+            .with_local_record("name", "Ann")
+            .with_inherited_record("tag", "42")
+            .with_inherited_record("target", "root")
             .in_scope(|| {
                 let ctx = LogScope::current_context();
 
@@ -392,7 +396,7 @@ mod tests {
                 assert_eq!(ctx.inherited["target"].to_string(), "root");
 
                 LogContext::new()
-                    .local_record("target", "nested")
+                    .with_local_record("target", "nested")
                     .in_scope(|| {
                         let ctx = LogScope::current_context();
 
@@ -408,8 +412,8 @@ mod tests {
     fn test_panic_in_child_scope_does_not_break_parent() {
         // Push parent frame onto the stack
         let outer_context = LogContext::new()
-            .inherited_record("outer", "val")
-            .local_record("outer_local", "ol");
+            .with_inherited_record("outer", "val")
+            .with_local_record("outer_local", "ol");
         {
             let _parent_guard = LogScope::enter(outer_context);
             // Verify parent is on the stack
@@ -431,8 +435,8 @@ mod tests {
     #[test]
     fn test_sibling_scopes_get_independent_inherited_copies() {
         let parent_ctx = LogContext::new()
-            .inherited_record("parent_key", "pv")
-            .local_record("parent_local", "pl");
+            .with_inherited_record("parent_key", "pv")
+            .with_local_record("parent_local", "pl");
 
         {
             let _g1 = LogScope::enter(parent_ctx);
@@ -440,8 +444,8 @@ mod tests {
 
             // child1: inherits parent's `parent_key`, adds its own `sibling` and local
             let child1_result = LogContext::new()
-                .inherited_record("sibling", "child1")
-                .local_record("only_in_child1", "c1")
+                .with_inherited_record("sibling", "child1")
+                .with_local_record("only_in_child1", "c1")
                 .in_scope(|| {
                     let c = LogScope::current_context();
                     format!(
@@ -456,8 +460,8 @@ mod tests {
 
             // child2: also inherits parent's `parent_key`, but its own `sibling` wins
             let c2_result = LogContext::new()
-                .inherited_record("sibling", "child2")
-                .local_record("only_in_child2", "c2")
+                .with_inherited_record("sibling", "child2")
+                .with_local_record("only_in_child2", "c2")
                 .in_scope(|| {
                     let c = LogScope::current_context();
                     format!("{}|{}", c.inherited["parent_key"], c.inherited["sibling"])
