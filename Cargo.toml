@@ -4,7 +4,14 @@ description = "A lightweight, ergonomic library for adding structured context to
 documentation = "https://docs.rs/crate/context-logger"
 repository = "https://github.com/alekseysidorov/context-logger"
 license = "MIT OR Apache-2.0"
-keywords = ["context-logging", "log", "logging", "structured-logging"]
+keywords = [
+  "async",
+  "context-logging",
+  "log",
+  "logging",
+  "structured-logging",
+  "tracing",
+]
 categories = ["asynchronous", "development-tools::debugging"]
 
 version = "0.2.0-pre.2"
