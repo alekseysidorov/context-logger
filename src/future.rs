@@ -26,8 +26,8 @@ pub trait FutureExt: Sized + crate::private::Sealed {
     /// async fn process_user_data(user_id: u64) {
     ///     // Create a context with user information
     ///     let context = LogContext::new()
-    ///         .with_record("user_id", user_id)
-    ///         .with_record("operation", "process_data");
+    ///         .with_local_record("user_id", user_id)
+    ///         .with_local_record("operation", "process_data");
     ///
     ///     async {
     ///         info!("Starting user data processing"); // Will include context
@@ -100,54 +100,54 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::FutureExt;
-    use crate::{LogContext, LogValue, stack::SCOPE_STACK};
+    use crate::{LogContext, LogValue, scope::stack::SCOPE_STACK};
 
-    fn find_value(key: &str) -> Option<String> {
+    fn find_local_value(key: &str) -> Option<String> {
         SCOPE_STACK.with(|stack| {
             let frame = stack.top()?;
-            frame.find(key).map(ToString::to_string)
+            frame.0.local.find(key).map(ToString::to_string)
         })
     }
 
     async fn check_nested_different_contexts(answer: u32) {
-        let context = LogContext::new().with_record("answer", answer);
+        let context = LogContext::new().with_local_record("answer", answer);
 
         async {
             tokio::task::yield_now().await;
 
             async {
                 tokio::task::yield_now().await;
-                assert_eq!(find_value("answer"), Some("None".to_string()));
+                assert_eq!(find_local_value("answer"), Some("None".to_string()));
             }
-            .in_log_context(LogContext::new().with_record("answer", LogValue::null()))
+            .in_log_context(LogContext::new().with_local_record("answer", LogValue::null()))
             .await;
 
             tokio::task::yield_now().await;
-            assert_eq!(find_value("answer"), Some(answer.to_string()));
+            assert_eq!(find_local_value("answer"), Some(answer.to_string()));
         }
         .in_log_context(context)
         .await;
 
-        assert_eq!(find_value("answer"), None);
+        assert_eq!(find_local_value("answer"), None);
     }
 
     #[tokio::test]
     async fn test_future_with_context() {
-        let context = LogContext::new().with_record("answer", 42);
+        let context = LogContext::new().with_local_record("answer", 42);
 
         async {
             tokio::task::yield_now().await;
-            assert_eq!(find_value("answer"), Some("42".to_string()));
+            assert_eq!(find_local_value("answer"), Some("42".to_string()));
         }
         .in_log_context(context)
         .await;
 
-        assert_eq!(find_value("answer"), None);
+        assert_eq!(find_local_value("answer"), None);
     }
 
     #[tokio::test]
     async fn test_panicked_future() {
-        let context = LogContext::new().with_record("answer", 42);
+        let context = LogContext::new().with_local_record("answer", 42);
 
         AssertUnwindSafe(
             async {
@@ -160,28 +160,28 @@ mod tests {
         .await
         .unwrap_err();
 
-        assert_eq!(find_value("answer"), None);
+        assert_eq!(find_local_value("answer"), None);
     }
 
     #[tokio::test]
     async fn test_nested_future_with_common_context() {
-        let context = LogContext::new().with_record("answer", 42);
+        let context = LogContext::new().with_local_record("answer", 42);
 
         async {
             tokio::task::yield_now().await;
 
             async {
                 tokio::task::yield_now().await;
-                assert_eq!(find_value("answer"), Some("42".to_string()));
+                assert_eq!(find_local_value("answer"), Some("42".to_string()));
             }
             .await;
 
-            assert_eq!(find_value("answer"), Some("42".to_string()));
+            assert_eq!(find_local_value("answer"), Some("42".to_string()));
         }
         .in_log_context(context)
         .await;
 
-        assert_eq!(find_value("answer"), None);
+        assert_eq!(find_local_value("answer"), None);
     }
 
     #[tokio::test]

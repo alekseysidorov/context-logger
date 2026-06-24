@@ -1,3 +1,6 @@
+// Warning: Because each test initializes the logger, we need to split the
+// tests into separate files to avoid multiple initializations of the logger.
+
 use context_logger::{LogContext, LogScope};
 
 use crate::common::{RecordExt, check_logger_once};
@@ -12,6 +15,6 @@ fn test_smoke() {
         Ok(())
     });
 
-    let _guard = LogScope::enter(LogContext::new().with_record("answer", 42));
+    let _guard = LogScope::enter(LogContext::new().with_local_record("answer", 42));
     log::info!("Smoke on the water, fire in the sky");
 }

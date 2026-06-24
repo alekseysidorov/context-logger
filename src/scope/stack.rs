@@ -5,7 +5,7 @@
 
 use std::cell::{Ref, RefCell, RefMut};
 
-use crate::record::LogRecord;
+use crate::{LogContext, records::LogRecordRef};
 
 thread_local! {
     /// Thread-local stack for maintaining log scopes.
@@ -18,11 +18,8 @@ thread_local! {
 /// A single frame in the thread-local [`ScopeStack`].
 ///
 /// Pushed when a scope is entered and popped when its guard is dropped.
-#[derive(Debug, Clone)]
-pub struct ScopeFrame {
-    /// Records attached at this scope level.
-    local: Vec<LogRecord>,
-}
+#[derive(Debug, Clone, Default)]
+pub struct ScopeFrame(pub LogContext);
 
 /// A stack of scope frames, one per active [`crate::LogScope`].
 #[derive(Debug)]
@@ -31,33 +28,29 @@ pub struct ScopeStack {
 }
 
 impl ScopeFrame {
-    pub const fn new() -> Self {
-        Self { local: Vec::new() }
+    pub fn new() -> Self {
+        Self(LogContext::new())
     }
 
-    pub fn push(&mut self, record: impl Into<LogRecord>) {
-        self.local.push(record.into());
-    }
-
-    pub fn records(&self) -> impl ExactSizeIterator<Item = &LogRecord> + Clone {
-        self.local.iter()
+    /// Returns an iterator over all records in this scope frame.
+    ///
+    /// Inherited records come first, followed by local records. This allows local
+    /// records to shadow inherited ones when a consumer resolves duplicate keys
+    /// using "last write wins" semantics.
+    pub fn records(&self) -> impl Iterator<Item = LogRecordRef<'_>> + Clone {
+        self.0.inherited.iter().chain(self.0.local.iter())
     }
 }
 
-#[cfg(test)]
-impl ScopeFrame {
-    /// Returns the first record with the given key, or `None` if not found.
-    ///
-    /// Performs a linear scan over all records in the frame — O(n).
-    pub fn find(&self, key: &str) -> Option<&crate::LogValue> {
-        self.local
-            .iter()
-            .find(|r| r.key() == key)
-            .map(crate::record::LogRecord::value)
+impl From<LogContext> for ScopeFrame {
+    fn from(context: LogContext) -> Self {
+        Self(context)
     }
+}
 
-    pub fn is_empty(&self) -> bool {
-        self.local.is_empty()
+impl From<ScopeFrame> for LogContext {
+    fn from(frame: ScopeFrame) -> Self {
+        frame.0
     }
 }
 
@@ -69,13 +62,24 @@ impl ScopeStack {
         }
     }
 
-    /// Pushes a new scope frame onto the stack.
+    /// Pushes a new scope frame onto the stack, merging inherited records from
+    /// the current top frame into the new context's inherited records.
     ///
     /// # Panics
     ///
     /// If the stack is already borrowed.
-    pub fn push(&self, frame: ScopeFrame) {
-        self.inner.borrow_mut().push(frame);
+    pub fn push(&self, mut context: LogContext) {
+        // Merge inherited records from the parent frame into the child context.
+        // Parent inherited records are applied first, then child inherited records
+        // so child scopes can shadow inherited keys from their parent.
+        let mut inherited = self
+            .top()
+            .map(|top| top.0.inherited.clone())
+            .unwrap_or_default();
+        inherited.extend(context.inherited);
+        context.inherited = inherited;
+
+        self.inner.borrow_mut().push(ScopeFrame::from(context));
     }
 
     /// Pops the top scope frame from the stack.
@@ -124,11 +128,36 @@ impl Default for ScopeStack {
 
 #[cfg(test)]
 impl ScopeStack {
+    /// Returns the number of scope frames on the stack.
     pub fn len(&self) -> usize {
         self.inner.borrow().len()
     }
 
+    /// Returns `true` if the stack is empty.
     pub fn is_empty(&self) -> bool {
         self.inner.borrow().is_empty()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::LogRecords;
+
+    fn record_to_string(record: LogRecordRef<'_>) -> (&str, String) {
+        (record.0.as_ref(), record.1.to_string())
+    }
+
+    #[test]
+    fn test_scope_frame_records_with_inherited() {
+        let frame = ScopeFrame(LogContext {
+            local: LogRecords::new().field("name", "bob"),
+            inherited: LogRecords::new().field("tag", 42),
+        });
+
+        let records: Vec<_> = frame.records().map(record_to_string).collect();
+
+        assert_eq!(records.len(), 2);
+        assert_eq!(records[0], ("tag", "42".to_string()));
     }
 }
