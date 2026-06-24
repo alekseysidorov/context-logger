@@ -19,6 +19,7 @@ and this project adheres to
     - child `inherited` overrides parent `inherited` by key
   - `LogContext::with_record` is replaced by `with_local_record` /
     `with_inherited_record`
+  - `LogContext::new` is no longer constant
 - Added `LogScope::in_scope` — runs synchronous closures within a temporary
   logging scope and exits it automatically.
 - Added `LogContextExt::in_scope` — ergonomic method-style API for running a
