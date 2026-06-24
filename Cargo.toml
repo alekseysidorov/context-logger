@@ -5,7 +5,6 @@ documentation = "https://docs.rs/crate/context-logger"
 repository = "https://github.com/alekseysidorov/context-logger"
 license = "MIT OR Apache-2.0"
 keywords = [
-  "async",
   "context-logging",
   "log",
   "logging",
