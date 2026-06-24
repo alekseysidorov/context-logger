@@ -48,9 +48,9 @@ fn main() {
     // Create a context.
     let context = LogContext::new()
         // Record that will be inherited by child contexts.
-        .inherited_record("request_id", "req-123")
+        .with_inherited_record("request_id", "req-123")
         // Local record that will only be present in this context.
-        .local_record("user_id", 42);
+        .with_local_record("user_id", 42);
     // Use the context.
     context.in_scope(|| {
         // Log with context automatically attached
@@ -73,7 +73,7 @@ use context_logger::{ContextLogger, LogContext, FutureExt, LogScope};
 use log::info;
 
 async fn process_user_data(user_id: &str) {
-    let context = LogContext::new().local_record("user_id", user_id);
+    let context = LogContext::new().with_local_record("user_id", user_id);
 
     async {
         info!("Processing user data"); // Includes user_id
@@ -94,7 +94,7 @@ async fn fetch_user_preferences() {
 }
 
 async fn spawn_background_job(user_id: &str) {
-    let context = LogContext::new().local_record("user_id", user_id);
+    let context = LogContext::new().with_local_record("user_id", user_id);
 
     async {
         // The scope stack is thread-local: capture the active context

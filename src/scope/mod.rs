@@ -18,7 +18,7 @@ pub mod stack;
 /// use context_logger::{LogContext, LogScope};
 ///
 /// // Create a context with some data
-/// let context = LogContext::new().local_record("user_id", 123);
+/// let context = LogContext::new().with_local_record("user_id", 123);
 ///
 /// // Enter the context (pushes to stack)
 /// let guard = LogScope::enter(context);
@@ -52,8 +52,8 @@ impl LogScope {
     ///
     /// async fn my_async_fn() {
     ///     let ctx = LogContext::new()
-    ///         .local_record("request_id", "req-123")
-    ///         .local_record("user_id", 42);
+    ///         .with_local_record("request_id", "req-123")
+    ///         .with_local_record("user_id", 42);
     ///     // WARNING: This context will remain active until this
     ///     // guard is dropped...
     ///     let _guard = LogScope::enter(ctx);
@@ -82,7 +82,7 @@ impl LogScope {
     /// ```
     /// use context_logger::{LogContext, LogScope};
     ///
-    /// let context = LogContext::new().local_record("request_id", "req-123");
+    /// let context = LogContext::new().with_local_record("request_id", "req-123");
     /// let result = LogScope::in_scope(
     ///     context,
     ///     || 40 + 2,
@@ -122,7 +122,7 @@ impl LogScope {
     /// }
     ///
     /// let _guard = LogScope::enter(LogContext::new()
-    ///     .local_record("request_id", "req-123"));
+    ///     .with_local_record("request_id", "req-123"));
     ///
     /// process_request(); // Will log with both request_id and processing_time_ms
     /// ```
@@ -188,7 +188,7 @@ pub trait LogContextExt: Sized + crate::private::Sealed {
     /// use context_logger::{LogContext, LogContextExt as _};
     ///
     /// let result = LogContext::new()
-    ///     .local_record("request_id", "req-123")
+    ///     .with_local_record("request_id", "req-123")
     ///     .in_scope(|| 40 + 2);
     ///
     /// assert_eq!(result, 42);

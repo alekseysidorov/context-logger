@@ -26,8 +26,8 @@ pub trait FutureExt: Sized + crate::private::Sealed {
     /// async fn process_user_data(user_id: u64) {
     ///     // Create a context with user information
     ///     let context = LogContext::new()
-    ///         .local_record("user_id", user_id)
-    ///         .local_record("operation", "process_data");
+    ///         .with_local_record("user_id", user_id)
+    ///         .with_local_record("operation", "process_data");
     ///
     ///     async {
     ///         info!("Starting user data processing"); // Will include context

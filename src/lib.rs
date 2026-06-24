@@ -67,8 +67,8 @@ pub use self::{
 ///
 /// // Create a context with properties
 /// let ctx = LogContext::new()
-///     .local_record("request_id", "req-123")
-///     .local_record("user_id", 42);
+///     .with_local_record("request_id", "req-123")
+///     .with_local_record("user_id", 42);
 ///
 /// // Use the context while logging
 /// let _guard = LogScope::enter(ctx);
@@ -147,7 +147,7 @@ impl ContextLogger {
     /// logger.init(LevelFilter::Info);
     /// // Context records are added after default records
     /// let _guard = LogScope::enter(LogContext::new()
-    ///     .local_record("request_id", "123"));
+    ///     .with_local_record("request_id", "123"));
     ///
     /// info!("Processing request"); // Will include service="api", version="1.0.0", request_id="123"
     /// ```
