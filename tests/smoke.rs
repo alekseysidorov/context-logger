@@ -1,4 +1,4 @@
-// Warning: Because the each test initializes the logger, we need to split the
+// Warning: Because each test initializes the logger, we need to split the
 // tests into separate files to avoid multiple initializations of the logger.
 
 use context_logger::{LogContext, LogScope};
