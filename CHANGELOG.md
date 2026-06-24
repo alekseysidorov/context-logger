@@ -14,10 +14,9 @@ and this project adheres to
       the current scope
     - `LogContext::with_inherited_record(key, value)` — record is automatically
       available in child scopes
-  - Nested scopes keep intuitive override behavior:
-    - child local records override inherited records with the same key
-    - child inherited records override parent inherited records with the same
-      key
+  - Nested scopes override rules:
+    - child `local` overrides inherited by key
+    - child `inherited` overrides parent `inherited` by key
   - `LogContext::with_record` is replaced by `with_local_record` /
     `with_inherited_record`
 - Added `LogScope::in_scope` — runs synchronous closures within a temporar

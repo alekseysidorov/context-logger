@@ -11,6 +11,11 @@ use crate::{LogValue, records::LogRecords};
 /// - **local** - records belonging only to the current scope.
 ///   They do not propagate to child scopes.
 /// - **inherited** - records that automatically flow into all child scopes created within the current scope.
+///
+/// Nested scopes override rules:
+///
+/// - child `local` overrides inherited by key
+/// - child `inherited` overrides parent `inherited` by key
 #[derive(Debug, Default, Clone)]
 pub struct LogContext {
     /// Records belonging only to the current scope.
