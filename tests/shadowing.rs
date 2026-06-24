@@ -13,14 +13,17 @@ fn test_inherited_records_shadowing() {
         assert_eq!(entry.get_record("answer").unwrap(), 42);
         assert_eq!(entry.get_record("name").unwrap(), "Robin");
         assert_eq!(entry.get_record("shadow").unwrap(), true);
+        assert_eq!(entry.get_record("inherited_shadow").unwrap(), "child");
         Ok(())
     });
 
     LogContext::new()
         .inherited_record("answer", 42)
         .inherited_record("shadow", false)
+        .inherited_record("inherited_shadow", "parent")
         .in_scope(|| {
             LogContext::new()
+                .inherited_record("inherited_shadow", "child")
                 .local_record("name", "Robin")
                 .local_record("shadow", true)
                 .in_scope(|| {

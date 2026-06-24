@@ -32,7 +32,11 @@ impl ScopeFrame {
         Self(LogContext::new())
     }
 
-    /// Returns an iterator over the all records in this scope frame.
+    /// Returns an iterator over all records in this scope frame.
+    ///
+    /// Inherited records come first, followed by local records. This allows local
+    /// records to shadow inherited ones when a consumer resolves duplicate keys
+    /// using "last write wins" semantics.
     pub fn records(&self) -> impl Iterator<Item = LogRecordRef<'_>> + Clone {
         self.0.inherited.iter().chain(self.0.local.iter())
     }
@@ -65,15 +69,15 @@ impl ScopeStack {
     ///
     /// If the stack is already borrowed.
     pub fn push(&self, mut context: LogContext) {
-        // Take the inherited records from the top frame, if stack is not empty.
-        // And then merge them into the new frame's inherited records.
-        //
-        // This ensures that child scopes inherit records from their parent scopes.
-        context.inherited.extend(
-            self.top()
-                .map(|top| top.0.inherited.clone())
-                .unwrap_or_default(),
-        );
+        // Merge inherited records from the parent frame into the child context.
+        // Parent inherited records are applied first, then child inherited records
+        // so child scopes can shadow inherited keys from their parent.
+        let mut inherited = self
+            .top()
+            .map(|top| top.0.inherited.clone())
+            .unwrap_or_default();
+        inherited.extend(context.inherited);
+        context.inherited = inherited;
 
         self.inner.borrow_mut().push(ScopeFrame::from(context));
     }

@@ -175,10 +175,9 @@ impl log::Log for ContextLogger {
 
     fn log(&self, record: &log::Record) {
         let error = scope::stack::SCOPE_STACK.try_with(|stack| {
-            // Only the top frame is read here intentionally: when scope inheritance is
-            // implemented (see issue #16), inherited records from outer scopes will be
-            // automatically copied into the new top frame on `enter()`, so the top frame
-            // will always contain a complete, flat view of all active records.
+            // Only the top frame is read here intentionally: inherited records from
+            // outer scopes are copied into each newly entered frame on `enter()`,
+            // so the top frame always contains a complete, flat view of active records.
             if let Some(top) = stack.top() {
                 self.inner.log(
                     &record
