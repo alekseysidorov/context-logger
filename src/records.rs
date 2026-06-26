@@ -20,17 +20,18 @@ pub type LogRecordRef<'a> = (&'a Cow<'static, str>, &'a LogValue);
 pub struct LogRecords(pub(crate) HashMap<Cow<'static, str>, LogValue>);
 
 impl LogRecords {
+    /// Creates a new, empty set of records.
     #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
-    /// Adds a key-value record to this collection, returning the collection for chained calls.
-    ///
-    /// # Examples
+    /// Inserts a key-value record into this collection, returning the collection for chained calls.
     ///
     /// This method takes ownership of `self`, so it can be used as part of a
     /// builder-style chain:
+    ///
+    /// # Examples
     ///
     /// ```
     /// use context_logger::LogRecords;
@@ -45,14 +46,55 @@ impl LogRecords {
         self
     }
 
-    /// Adds a key-value record to this collection.
-    pub fn insert(&mut self, key: impl Into<Cow<'static, str>>, value: impl Into<LogValue>) {
+    /// Inserts a key-value record into this collection.
+    ///
+    /// Unlike [`field`](LogRecords::field), this method borrows `self` and returns a mutable reference,
+    /// allowing it to be used when chaining with other methods that require borrowing.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use context_logger::LogRecords;
+    ///
+    /// let mut records = LogRecords::new();
+    /// records
+    ///     .insert("user_id", "user-123")
+    ///     .insert("request_id", 42);
+    /// ```
+    pub fn insert(
+        &mut self,
+        key: impl Into<Cow<'static, str>>,
+        value: impl Into<LogValue>,
+    ) -> &mut Self {
         self.0.insert(key.into(), value.into());
+        self
     }
 
-    /// Extends this collection with the records from another collection.
-    pub fn extend(&mut self, other: impl IntoIterator<Item = LogRecord>) {
+    /// Merges this collection with the records from another collection.
+    ///
+    /// This method borrows `self` and returns a mutable reference, allowing it
+    /// to be used when chaining with other methods that require borrowing.
+    ///
+    /// # Merging policy
+    ///
+    /// Keys in this collection with duplicate names will be overwritten by keys from the
+    /// provided collection. The order of keys in the resulting collection is undefined.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use context_logger::LogRecords;
+    ///
+    /// # let other_records = LogRecords::new();
+    /// let mut records = LogRecords::new();
+    /// records
+    ///     .insert("user_id", "Alice")
+    ///     .merge_with(other_records)
+    ///     .insert("request_id", 42);
+    /// ```
+    pub fn merge_with(&mut self, other: impl IntoIterator<Item = LogRecord>) -> &mut Self {
         self.0.extend(other);
+        self
     }
 
     /// Returns an iterator over the records in this collection.
@@ -83,6 +125,18 @@ impl IntoIterator for LogRecords {
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
+    }
+}
+
+impl Extend<LogRecord> for LogRecords {
+    fn extend<I: IntoIterator<Item = LogRecord>>(&mut self, iter: I) {
+        self.0.extend(iter);
+    }
+}
+
+impl FromIterator<LogRecord> for LogRecords {
+    fn from_iter<T: IntoIterator<Item = LogRecord>>(iter: T) -> Self {
+        Self(HashMap::from_iter(iter))
     }
 }
 

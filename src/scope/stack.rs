@@ -76,7 +76,7 @@ impl ScopeStack {
             .top()
             .map(|top| top.0.inherited.clone())
             .unwrap_or_default();
-        inherited.extend(context.inherited);
+        inherited.merge_with(context.inherited);
         context.inherited = inherited;
 
         self.inner.borrow_mut().push(ScopeFrame::from(context));
@@ -141,6 +141,8 @@ impl ScopeStack {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use super::*;
     use crate::LogRecords;
 
@@ -155,9 +157,9 @@ mod tests {
             inherited: LogRecords::new().field("tag", 42),
         });
 
-        let records: Vec<_> = frame.records().map(record_to_string).collect();
+        let records: HashMap<_, _> = frame.records().map(record_to_string).collect();
 
         assert_eq!(records.len(), 2);
-        assert_eq!(records[0], ("tag", "42".to_string()));
+        assert_eq!(records["tag"], "42");
     }
 }
