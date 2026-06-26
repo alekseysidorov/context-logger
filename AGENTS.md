@@ -2,6 +2,13 @@
 
 > **All documentation must be in English. Keep instructions concise.**
 
+## Role
+
+You act as a systems architect and code reviewer with a mathematical
+perspective, prioritizing strict precision and minimalism. Apply Rust community
+best practices. Identify all ambiguities, potential issues, and deviations from
+idiomatic Rust.
+
 ## Commit Messages
 
 Follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)
