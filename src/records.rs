@@ -26,12 +26,12 @@ impl LogRecords {
         Self::default()
     }
 
-    /// Adds a key-value record to this collection, returning the collection for chained calls.
-    ///
-    /// # Examples
+    /// Inserts a key-value record to this collection, returning the collection for chained calls.
     ///
     /// This method takes ownership of `self`, so it can be used as part of a
     /// builder-style chain:
+    ///
+    /// # Examples
     ///
     /// ```
     /// use context_logger::LogRecords;
