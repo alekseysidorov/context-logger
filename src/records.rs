@@ -26,7 +26,7 @@ impl LogRecords {
         Self::default()
     }
 
-    /// Inserts a key-value record to this collection, returning the collection for chained calls.
+    /// Inserts a key-value record into this collection, returning the collection for chained calls.
     ///
     /// This method takes ownership of `self`, so it can be used as part of a
     /// builder-style chain:
@@ -70,10 +70,15 @@ impl LogRecords {
         self
     }
 
-    /// Extends this collection with the records from another collection.
+    /// Merges this collection with the records from another collection.
     ///
     /// This method borrows `self` and returns a mutable reference, allowing it
     /// to be used when chaining with other methods that require borrowing.
+    ///
+    /// # Merging policy
+    ///
+    /// Keys in this collection with duplicate names will be overwritten by keys from the
+    /// provided collection. The order of keys in the resulting collection is undefined.
     ///
     /// # Examples
     ///
@@ -83,10 +88,11 @@ impl LogRecords {
     /// # let other_records = LogRecords::new();
     /// let mut records = LogRecords::new();
     /// records
-    ///     .extend(other_records)
+    ///     .insert("user_id", "Alice")
+    ///     .merge_with(other_records)
     ///     .insert("request_id", 42);
     /// ```
-    pub fn extend(&mut self, other: impl IntoIterator<Item = LogRecord>) -> &mut Self {
+    pub fn merge_with(&mut self, other: impl IntoIterator<Item = LogRecord>) -> &mut Self {
         self.0.extend(other);
         self
     }

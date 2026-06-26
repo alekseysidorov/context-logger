@@ -76,7 +76,7 @@ impl ScopeStack {
             .top()
             .map(|top| top.0.inherited.clone())
             .unwrap_or_default();
-        inherited.extend(context.inherited);
+        inherited.merge_with(context.inherited);
         context.inherited = inherited;
 
         self.inner.borrow_mut().push(ScopeFrame::from(context));
