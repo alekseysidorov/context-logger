@@ -61,7 +61,6 @@ impl LogRecords {
     ///     .insert("user_id", "user-123")
     ///     .insert("request_id", 42);
     /// ```
-    #[inline]
     pub fn insert(
         &mut self,
         key: impl Into<Cow<'static, str>>,
@@ -83,9 +82,10 @@ impl LogRecords {
     ///
     /// # let other_records = LogRecords::new();
     /// let mut records = LogRecords::new();
-    /// records.extend(other_records);
+    /// records
+    ///     .extend(other_records)
+    ///     .insert("request_id", 42);
     /// ```
-    ///
     pub fn extend(&mut self, other: impl IntoIterator<Item = LogRecord>) -> &mut Self {
         self.0.extend(other);
         self
@@ -119,6 +119,18 @@ impl IntoIterator for LogRecords {
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
+    }
+}
+
+impl Extend<LogRecord> for LogRecords {
+    fn extend<I: IntoIterator<Item = LogRecord>>(&mut self, iter: I) {
+        self.0.extend(iter);
+    }
+}
+
+impl FromIterator<LogRecord> for LogRecords {
+    fn from_iter<T: IntoIterator<Item = LogRecord>>(iter: T) -> Self {
+        Self(HashMap::from_iter(iter))
     }
 }
 
