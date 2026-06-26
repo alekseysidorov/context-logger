@@ -9,16 +9,14 @@ and this project adheres to
 ## [Unreleased]
 
 - _breaking_ Introduced inherited context records
-  - `LogContext::record` is replaced by `with_local_record` and
-    `with_inherited_record` methods
-  - You can now control propagation explicitly:
-    - `LogContext::with_local_record(key, value)` — record is visible only in
-      the current scope
-    - `LogContext::with_inherited_record(key, value)` — record is automatically
-      available in child scopes
-  - Nested scopes override rules:
-    - child `local` overrides inherited by key
-    - child `inherited` overrides parent `inherited` by key
+  - `LogContext` now stores two separate sets of records (`local` and
+    `inherited`), each with its own propagation semantics:
+    - `with_local_record(key, value)` — record is visible only in the current
+      scope; overrides inherited records with the same key in child scopes
+    - `with_inherited_record(key, value)` — record propagates to child scopes;
+      child local records take priority over inherited ones
+  - Introduced `LogRecords` as a dedicated key-value collection for structured
+    log entries.
   - `LogContext::new` is no longer constant
 - Added `LogScope::in_scope` — runs synchronous closures within a temporary
   logging scope and exits it automatically.
