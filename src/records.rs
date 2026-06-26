@@ -20,6 +20,7 @@ pub type LogRecordRef<'a> = (&'a Cow<'static, str>, &'a LogValue);
 pub struct LogRecords(pub(crate) HashMap<Cow<'static, str>, LogValue>);
 
 impl LogRecords {
+    /// Creates a new, empty set of records.
     #[must_use]
     pub fn new() -> Self {
         Self::default()
@@ -45,14 +46,49 @@ impl LogRecords {
         self
     }
 
-    /// Adds a key-value record to this collection.
-    pub fn insert(&mut self, key: impl Into<Cow<'static, str>>, value: impl Into<LogValue>) {
+    /// Inserts a key-value record into this collection.
+    ///
+    /// Unlike [`field`](LogRecords::field), this method borrows `self` and returns a mutable reference,
+    /// allowing it to be used when chaining with other methods that require borrowing.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use context_logger::LogRecords;
+    ///
+    /// let mut records = LogRecords::new();
+    /// records
+    ///     .insert("user_id", "user-123")
+    ///     .insert("request_id", 42);
+    /// ```
+    #[inline]
+    pub fn insert(
+        &mut self,
+        key: impl Into<Cow<'static, str>>,
+        value: impl Into<LogValue>,
+    ) -> &mut Self {
         self.0.insert(key.into(), value.into());
+        self
     }
 
     /// Extends this collection with the records from another collection.
-    pub fn extend(&mut self, other: impl IntoIterator<Item = LogRecord>) {
+    ///
+    /// This method borrows `self` and returns a mutable reference, allowing it
+    /// to be used when chaining with other methods that require borrowing.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use context_logger::LogRecords;
+    ///
+    /// # let other_records = LogRecords::new();
+    /// let mut records = LogRecords::new();
+    /// records.extend(other_records);
+    /// ```
+    ///
+    pub fn extend(&mut self, other: impl IntoIterator<Item = LogRecord>) -> &mut Self {
         self.0.extend(other);
+        self
     }
 
     /// Returns an iterator over the records in this collection.
