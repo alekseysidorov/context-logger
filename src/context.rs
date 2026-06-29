@@ -40,7 +40,7 @@ impl LogContext {
         key: impl Into<Cow<'static, str>>,
         value: impl Into<LogValue>,
     ) -> Self {
-        self.local = self.local.field(key, value);
+        self.local = self.local.with_record(key, value);
         self
     }
 
@@ -53,7 +53,7 @@ impl LogContext {
         key: impl Into<Cow<'static, str>>,
         value: impl Into<LogValue>,
     ) -> Self {
-        self.inherited = self.inherited.field(key, value);
+        self.inherited = self.inherited.with_record(key, value);
         self
     }
 
