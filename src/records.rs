@@ -37,18 +37,18 @@ impl LogRecords {
     /// use context_logger::LogRecords;
     ///
     /// let records = LogRecords::new()
-    ///     .field("user_id", "user-123")
-    ///     .field("request_id", 42);
+    ///      .record("user_id", "user-123")
+    ///      .record("request_id", 42);
     /// ```
     #[must_use]
-    pub fn field(mut self, key: impl Into<Cow<'static, str>>, value: impl Into<LogValue>) -> Self {
+    pub fn record(mut self, key: impl Into<Cow<'static, str>>, value: impl Into<LogValue>) -> Self {
         self.insert(key, value);
         self
     }
 
     /// Inserts a key-value record into this collection.
     ///
-    /// Unlike [`field`](LogRecords::field), this method borrows `self` and returns a mutable reference,
+    /// Unlike [`record`](LogRecords::record), this method borrows `self` and returns a mutable reference,
     /// allowing it to be used when chaining with other methods that require borrowing.
     ///
     /// # Examples

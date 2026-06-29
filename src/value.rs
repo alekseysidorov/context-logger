@@ -23,7 +23,7 @@ impl serde::Serialize for SerdeArc {
     }
 }
 
-/// Represents a value that can be stored in a log field.
+/// Represents a value that can be stored in a log record.
 ///
 /// The `LogValue` type is a flexible container designed to hold various kinds of data
 /// that can be associated with a log entry. It supports primitive types, strings, and
