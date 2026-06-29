@@ -37,6 +37,8 @@ mod records;
 mod scope;
 mod value;
 
+type LogRecordsFn = Box<dyn Fn(&log::Record) -> LogRecords + Send + Sync>;
+
 pub use self::{
     context::LogContext,
     future::FutureExt,
@@ -77,8 +79,9 @@ pub use self::{
 ///
 /// See [`LogContext`] for more information on how to create and manage scope records.
 pub struct ContextLogger {
-    records: LogRecords,
     inner: Box<dyn log::Log>,
+    default_records: LogRecords,
+    default_records_fn: Option<LogRecordsFn>,
 }
 
 impl ContextLogger {
@@ -91,8 +94,9 @@ impl ContextLogger {
         L: log::Log + 'static,
     {
         Self {
-            records: LogRecords::new(),
             inner: Box::new(inner),
+            default_records: LogRecords::new(),
+            default_records_fn: None,
         }
     }
 
@@ -141,8 +145,8 @@ impl ContextLogger {
     ///
     /// // Create a logger with default records
     /// let logger = ContextLogger::new(env_logger::builder().build())
-    ///     .default_record("service", "api")
-    ///     .default_record("version", "1.0.0");
+    ///     .with_default_record("service", "api")
+    ///     .with_default_record("version", "1.0.0");
     /// // Initialize it
     /// logger.init(LevelFilter::Info);
     /// // Context records are added after default records
@@ -152,13 +156,21 @@ impl ContextLogger {
     /// info!("Processing request"); // Will include service="api", version="1.0.0", request_id="123"
     /// ```
     #[must_use]
-    pub fn default_record(
+    pub fn with_default_record(
         mut self,
         key: impl Into<Cow<'static, str>>,
         value: impl Into<LogValue>,
     ) -> Self {
-        self.records.insert(key, value);
+        self.default_records.insert(key, value);
         self
+    }
+
+    #[must_use]
+    pub fn with_default_records_fn<F>(mut self, f: F)
+    where
+        F: Fn(&log::Record) -> LogRecords + Send + Sync + 'static,
+    {
+        self.default_records_fn = Some(Box::new(f));
     }
 }
 
@@ -174,7 +186,20 @@ impl log::Log for ContextLogger {
     }
 
     fn log(&self, record: &log::Record) {
+        if !self.enabled(record.metadata()) {
+            return;
+        }
+
         let error = scope::stack::SCOPE_STACK.try_with(|stack| {
+            // LogRecords::default() does not allocate memory, so we can use it directly
+            // to simplify the logic without overhead.
+            let extra_default_records = self
+                .default_records_fn
+                .as_ref()
+                .map(|f| f(record))
+                .unwrap_or_default();
+            let default_records = self.default_records.iter().chain(&extra_default_records);
+
             // Only the top frame is read here intentionally: inherited records from
             // outer scopes are copied into each newly entered frame on `enter()`,
             // so the top frame always contains a complete, flat view of active records.
@@ -184,7 +209,7 @@ impl log::Log for ContextLogger {
                         .to_builder()
                         .key_values(&SourceWithRecords {
                             source: &record.key_values(),
-                            records: self.records.iter().chain(top.records()),
+                            records: default_records.chain(top.records()),
                         })
                         .build(),
                 );
@@ -194,7 +219,7 @@ impl log::Log for ContextLogger {
                         .to_builder()
                         .key_values(&SourceWithRecords {
                             source: &record.key_values(),
-                            records: self.records.iter(),
+                            records: default_records,
                         })
                         .build(),
                 );
