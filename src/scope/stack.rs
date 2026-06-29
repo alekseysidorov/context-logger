@@ -153,8 +153,8 @@ mod tests {
     #[test]
     fn test_scope_frame_records_with_inherited() {
         let frame = ScopeFrame(LogContext {
-            local: LogRecords::new().record("name", "bob"),
-            inherited: LogRecords::new().record("tag", 42),
+            local: LogRecords::new().with_record("name", "bob"),
+            inherited: LogRecords::new().with_record("tag", 42),
         });
 
         let records: HashMap<_, _> = frame.records().map(record_to_string).collect();
