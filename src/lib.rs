@@ -27,7 +27,7 @@
 //! [`env_logger`]: https://docs.rs/env_logger/latest/env_logger
 //! [`log4rs`]: https://docs.rs/log4rs/latest/log4rs
 
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::HashMap};
 
 use crate::records::LogRecordRef;
 
@@ -37,7 +37,7 @@ mod records;
 mod scope;
 mod value;
 
-type LogRecordsFn = Box<dyn Fn(&log::Record) -> LogRecords + Send + Sync>;
+type LogValueFn = Box<dyn Fn(&log::Record) -> LogValue + Send + Sync>;
 
 pub use self::{
     context::LogContext,
@@ -80,8 +80,8 @@ pub use self::{
 /// See [`LogContext`] for more information on how to create and manage scope records.
 pub struct ContextLogger {
     inner: Box<dyn log::Log>,
-    default_records: LogRecords,
-    default_records_fn: Option<LogRecordsFn>,
+    records: LogRecords,
+    dynamic_records: HashMap<Cow<'static, str>, LogValueFn>,
 }
 
 impl ContextLogger {
@@ -95,8 +95,8 @@ impl ContextLogger {
     {
         Self {
             inner: Box::new(inner),
-            default_records: LogRecords::new(),
-            default_records_fn: None,
+            records: LogRecords::new(),
+            dynamic_records: HashMap::new(),
         }
     }
 
@@ -161,16 +161,18 @@ impl ContextLogger {
         key: impl Into<Cow<'static, str>>,
         value: impl Into<LogValue>,
     ) -> Self {
-        self.default_records.insert(key, value);
+        self.records.insert(key, value);
         self
     }
 
     #[must_use]
-    pub fn with_default_records_fn<F>(mut self, f: F)
-    where
-        F: Fn(&log::Record) -> LogRecords + Send + Sync + 'static,
-    {
-        self.default_records_fn = Some(Box::new(f));
+    pub fn with_default_record_fn<F>(
+        mut self,
+        key: impl Into<Cow<'static, str>>,
+        f: impl Fn(&log::Record) -> LogValue + Send + Sync + 'static,
+    ) -> Self {
+        self.dynamic_records.insert(key.into(), Box::new(f));
+        self
     }
 }
 
@@ -191,14 +193,15 @@ impl log::Log for ContextLogger {
         }
 
         let error = scope::stack::SCOPE_STACK.try_with(|stack| {
-            // LogRecords::default() does not allocate memory, so we can use it directly
-            // to simplify the logic without overhead.
-            let extra_default_records = self
-                .default_records_fn
-                .as_ref()
-                .map(|f| f(record))
-                .unwrap_or_default();
-            let default_records = self.default_records.iter().chain(&extra_default_records);
+            let dynamic_records = self
+                .dynamic_records
+                .iter()
+                .map(|(key, f)| (key, f(record)))
+                .collect::<Vec<_>>();
+            let default_records = self
+                .records
+                .iter()
+                .chain(dynamic_records.iter().map(|(k, v)| (*k, v)));
 
             // Only the top frame is read here intentionally: inherited records from
             // outer scopes are copied into each newly entered frame on `enter()`,

@@ -8,6 +8,9 @@ and this project adheres to
 
 ## [Unreleased]
 
+- Introduced a new method `ContextLogger::with_default_record_fn` that allows
+  injecting custom default records based on log record metadata, enabling more
+  flexible and dynamic logging contexts.
 - _breaking_ Introduced inherited context records
   - `LogContext` now stores two separate sets of records (`local` and
     `inherited`), each with its own propagation semantics:
