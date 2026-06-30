@@ -9,13 +9,16 @@ pub mod common;
 
 #[test]
 fn test_inherited_records_shadowing() {
-    check_logger_once(|entry| {
-        assert_eq!(entry.get_record("answer").unwrap(), 42);
-        assert_eq!(entry.get_record("name").unwrap(), "Robin");
-        assert_eq!(entry.get_record("shadow").unwrap(), true);
-        assert_eq!(entry.get_record("inherited_shadow").unwrap(), "child");
-        Ok(())
-    });
+    check_logger_once(
+        |logger| logger,
+        |entry| {
+            assert_eq!(entry.get_record("answer").unwrap(), 42);
+            assert_eq!(entry.get_record("name").unwrap(), "Robin");
+            assert_eq!(entry.get_record("shadow").unwrap(), true);
+            assert_eq!(entry.get_record("inherited_shadow").unwrap(), "child");
+            Ok(())
+        },
+    );
 
     LogContext::new()
         .with_inherited_record("answer", 42)

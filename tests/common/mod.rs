@@ -13,16 +13,17 @@ impl RecordExt for Record<'_> {
     }
 }
 
-pub fn check_logger_once<F>(check: F)
+pub fn check_logger_once<I, F>(init: I, check: F)
 where
+    I: FnOnce(ContextLogger) -> ContextLogger,
     F: Fn(&Record) -> std::io::Result<()> + Send + Sync + 'static,
 {
     let level_filter = LevelFilter::Trace;
-    let logger = ContextLogger::new(
+    let logger = init(ContextLogger::new(
         env_logger::Builder::new()
             .filter_level(level_filter)
             .format(move |_fmt, record| check(record))
             .build(),
-    );
+    ));
     logger.init(level_filter);
 }
