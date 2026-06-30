@@ -13,7 +13,7 @@ keywords = [
 ]
 categories = ["asynchronous", "development-tools::debugging"]
 
-version = "0.2.0-pre.2"
+version = "0.2.0-pre.3"
 edition = "2024"
 rust-version = "1.85"
 
@@ -25,6 +25,7 @@ pin-project = "1"
 serde = "1"
 
 [dev-dependencies]
+chrono = "0.4"
 env_logger = { version = "0.11", features = ["kv"] }
 futures-util = "0.3"
 pretty_assertions = "1.4"

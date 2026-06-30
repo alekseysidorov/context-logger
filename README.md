@@ -42,7 +42,7 @@ fn main() {
     // Wrap it with ContextLogger to enable context propagation.
     let context_logger = ContextLogger::new(env_logger)
         // Add version default record.
-        .default_record("version", "1.0.0");
+        .with_default_record("version", "1.0.0");
     // Initialize the resulting logger.
     context_logger.init(max_level);
     // Create a context.

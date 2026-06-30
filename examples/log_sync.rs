@@ -14,7 +14,7 @@ fn try_init_logger() -> Result<(), Box<dyn std::error::Error>> {
     let level = env_logger.filter();
 
     ContextLogger::new(env_logger)
-        .default_record("instance", "contexted_log_sync")
+        .with_default_record("instance", "contexted_log_sync")
         .try_init(level)?;
 
     Ok(())

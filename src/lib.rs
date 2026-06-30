@@ -27,7 +27,7 @@
 //! [`env_logger`]: https://docs.rs/env_logger/latest/env_logger
 //! [`log4rs`]: https://docs.rs/log4rs/latest/log4rs
 
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::HashMap};
 
 use crate::records::LogRecordRef;
 
@@ -36,6 +36,8 @@ pub mod future;
 mod records;
 mod scope;
 mod value;
+
+type LogValueFn = Box<dyn Fn(&log::Record) -> LogValue + Send + Sync>;
 
 pub use self::{
     context::LogContext,
@@ -77,8 +79,9 @@ pub use self::{
 ///
 /// See [`LogContext`] for more information on how to create and manage scope records.
 pub struct ContextLogger {
-    records: LogRecords,
     inner: Box<dyn log::Log>,
+    default_records: LogRecords,
+    dynamic_default_records: HashMap<Cow<'static, str>, LogValueFn>,
 }
 
 impl ContextLogger {
@@ -91,8 +94,9 @@ impl ContextLogger {
         L: log::Log + 'static,
     {
         Self {
-            records: LogRecords::new(),
             inner: Box::new(inner),
+            default_records: LogRecords::new(),
+            dynamic_default_records: HashMap::new(),
         }
     }
 
@@ -141,8 +145,8 @@ impl ContextLogger {
     ///
     /// // Create a logger with default records
     /// let logger = ContextLogger::new(env_logger::builder().build())
-    ///     .default_record("service", "api")
-    ///     .default_record("version", "1.0.0");
+    ///     .with_default_record("service", "api")
+    ///     .with_default_record("version", "1.0.0");
     /// // Initialize it
     /// logger.init(LevelFilter::Info);
     /// // Context records are added after default records
@@ -152,12 +156,49 @@ impl ContextLogger {
     /// info!("Processing request"); // Will include service="api", version="1.0.0", request_id="123"
     /// ```
     #[must_use]
-    pub fn default_record(
+    pub fn with_default_record(
         mut self,
         key: impl Into<Cow<'static, str>>,
         value: impl Into<LogValue>,
     ) -> Self {
-        self.records.insert(key, value);
+        self.default_records.insert(key, value);
+        self
+    }
+
+    /// Adds a dynamic default record computed by the given closure for each log entry.
+    ///
+    /// Like [`Self::with_default_record`], the record is included in all log entries.
+    /// However, unlike the static variant, the value is *computed at log time* by invoking the
+    /// provided closure with the current [`log::Record`]. This makes it suitable for fields
+    /// whose values are not known upfront, such as timestamps or thread IDs.
+    ///
+    /// **Note!** *The order in which dynamic default record functions are evaluated is not guaranteed.*
+    ///
+    /// # Example
+    ///
+    /// Adding a current timestamp.
+    ///
+    /// ```
+    /// use chrono::Utc;
+    /// use log::{info, LevelFilter};
+    /// use context_logger::{ContextLogger, LogValue};
+    ///
+    /// let logger = ContextLogger::new(env_logger::builder().build())
+    ///         .with_default_record_fn("timestamp", |_record| {
+    ///          Utc::now().to_rfc3339().to_string()
+    ///         });
+    /// logger.init(LevelFilter::Info);
+    ///
+    /// info!("Hello"); // The "timestamp" field will contain an RFC 3339 timestamp
+    /// ```
+    #[must_use]
+    pub fn with_default_record_fn<V: Into<LogValue>>(
+        mut self,
+        key: impl Into<Cow<'static, str>>,
+        f: impl Fn(&log::Record) -> V + Send + Sync + 'static,
+    ) -> Self {
+        self.dynamic_default_records
+            .insert(key.into(), Box::new(move |record| f(record).into()));
         self
     }
 }
@@ -174,7 +215,21 @@ impl log::Log for ContextLogger {
     }
 
     fn log(&self, record: &log::Record) {
+        if !self.enabled(record.metadata()) {
+            return;
+        }
+
         let error = scope::stack::SCOPE_STACK.try_with(|stack| {
+            let dynamic_default_records = self
+                .dynamic_default_records
+                .iter()
+                .map(|(key, f)| (key, f(record)))
+                .collect::<Vec<_>>();
+            let default_records = self
+                .default_records
+                .iter()
+                .chain(dynamic_default_records.iter().map(|(k, v)| (*k, v)));
+
             // Only the top frame is read here intentionally: inherited records from
             // outer scopes are copied into each newly entered frame on `enter()`,
             // so the top frame always contains a complete, flat view of active records.
@@ -184,7 +239,7 @@ impl log::Log for ContextLogger {
                         .to_builder()
                         .key_values(&SourceWithRecords {
                             source: &record.key_values(),
-                            records: self.records.iter().chain(top.records()),
+                            records: default_records.chain(top.records()),
                         })
                         .build(),
                 );
@@ -194,7 +249,7 @@ impl log::Log for ContextLogger {
                         .to_builder()
                         .key_values(&SourceWithRecords {
                             source: &record.key_values(),
-                            records: self.records.iter(),
+                            records: default_records,
                         })
                         .build(),
                 );

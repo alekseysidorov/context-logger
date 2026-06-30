@@ -53,7 +53,7 @@ impl LogRecords {
     /// Inserts a key-value record into this collection.
     ///
     /// Unlike [`with_record`](LogRecords::with_record), this method borrows `self` and
-    /// returns a mutable reference, allowing it to be used when chaining with other methodsё
+    /// returns a mutable reference, allowing it to be used when chaining with other methods
     /// that require borrowing.
     ///
     /// # Examples
