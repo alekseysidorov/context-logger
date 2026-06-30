@@ -165,8 +165,32 @@ impl ContextLogger {
         self
     }
 
+    /// Adds a dynamic default record computed by the given closure for each log entry.
+    ///
+    /// Like [`Self::with_default_record`], the record is included in all log entries.
+    /// However, unlike the static variant, the value is *computed at log time* by invoking the
+    /// provided closure with the current [`log::Record`]. This makes it suitable for fields
+    /// whose values are not known upfront, such as timestamps or thread IDs.
+    ///
+    /// # Example
+    ///
+    /// Adding a current timestamp.
+    ///
+    /// ```
+    /// use chrono::Utc;
+    /// use log::{info, LevelFilter};
+    /// use context_logger::{ContextLogger, LogValue};
+    ///
+    /// let logger = ContextLogger::new(env_logger::builder().build())
+    ///         .with_default_record_fn("timestamp", |_record| {
+    ///          LogValue::from(Utc::now().to_rfc3339().to_string())
+    ///         });
+    /// logger.init(LevelFilter::Info);
+    ///
+    /// info!("Hello"); // The "timestamp" field will contain an RFC 3339 timestamp
+    /// ```
     #[must_use]
-    pub fn with_default_record_fn<F>(
+    pub fn with_default_record_fn(
         mut self,
         key: impl Into<Cow<'static, str>>,
         f: impl Fn(&log::Record) -> LogValue + Send + Sync + 'static,
