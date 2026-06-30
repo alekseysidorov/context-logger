@@ -80,8 +80,8 @@ pub use self::{
 /// See [`LogContext`] for more information on how to create and manage scope records.
 pub struct ContextLogger {
     inner: Box<dyn log::Log>,
-    records: LogRecords,
-    dynamic_records: HashMap<Cow<'static, str>, LogValueFn>,
+    default_records: LogRecords,
+    dynamic_default_records: HashMap<Cow<'static, str>, LogValueFn>,
 }
 
 impl ContextLogger {
@@ -95,8 +95,8 @@ impl ContextLogger {
     {
         Self {
             inner: Box::new(inner),
-            records: LogRecords::new(),
-            dynamic_records: HashMap::new(),
+            default_records: LogRecords::new(),
+            dynamic_default_records: HashMap::new(),
         }
     }
 
@@ -161,7 +161,7 @@ impl ContextLogger {
         key: impl Into<Cow<'static, str>>,
         value: impl Into<LogValue>,
     ) -> Self {
-        self.records.insert(key, value);
+        self.default_records.insert(key, value);
         self
     }
 
@@ -171,6 +171,8 @@ impl ContextLogger {
     /// However, unlike the static variant, the value is *computed at log time* by invoking the
     /// provided closure with the current [`log::Record`]. This makes it suitable for fields
     /// whose values are not known upfront, such as timestamps or thread IDs.
+    ///
+    /// **Note!** *The order in which dynamic default record functions are evaluated is not guaranteed.*
     ///
     /// # Example
     ///
@@ -183,19 +185,20 @@ impl ContextLogger {
     ///
     /// let logger = ContextLogger::new(env_logger::builder().build())
     ///         .with_default_record_fn("timestamp", |_record| {
-    ///          LogValue::from(Utc::now().to_rfc3339().to_string())
+    ///          Utc::now().to_rfc3339().to_string()
     ///         });
     /// logger.init(LevelFilter::Info);
     ///
     /// info!("Hello"); // The "timestamp" field will contain an RFC 3339 timestamp
     /// ```
     #[must_use]
-    pub fn with_default_record_fn(
+    pub fn with_default_record_fn<V: Into<LogValue>>(
         mut self,
         key: impl Into<Cow<'static, str>>,
-        f: impl Fn(&log::Record) -> LogValue + Send + Sync + 'static,
+        f: impl Fn(&log::Record) -> V + Send + Sync + 'static,
     ) -> Self {
-        self.dynamic_records.insert(key.into(), Box::new(f));
+        self.dynamic_default_records
+            .insert(key.into(), Box::new(move |record| f(record).into()));
         self
     }
 }
@@ -217,15 +220,15 @@ impl log::Log for ContextLogger {
         }
 
         let error = scope::stack::SCOPE_STACK.try_with(|stack| {
-            let dynamic_records = self
-                .dynamic_records
+            let dynamic_default_records = self
+                .dynamic_default_records
                 .iter()
                 .map(|(key, f)| (key, f(record)))
                 .collect::<Vec<_>>();
             let default_records = self
-                .records
+                .default_records
                 .iter()
-                .chain(dynamic_records.iter().map(|(k, v)| (*k, v)));
+                .chain(dynamic_default_records.iter().map(|(k, v)| (*k, v)));
 
             // Only the top frame is read here intentionally: inherited records from
             // outer scopes are copied into each newly entered frame on `enter()`,
