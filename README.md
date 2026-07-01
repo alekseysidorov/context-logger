@@ -63,7 +63,7 @@ fn main() {
     // Use the context.
     context.in_scope(|| {
         // Log with context automatically attached:
-        // service=api version=1.0.0 request_id=req-123 user_id=42 timestamp="2026-05-30T17:46:48.610Z""
+        // service=api version=1.0.0 request_id=req-123 user_id=42 timestamp="..."
         info!("Processing request");
     })
 }

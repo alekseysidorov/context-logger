@@ -129,11 +129,8 @@ impl ContextLogger {
     ///     .with_default_record("version", "1.0.0");
     /// // Initialize it
     /// logger.init(LevelFilter::Info);
-    /// // Context records are added after default records
-    /// let _guard = LogScope::enter(LogContext::new()
-    ///     .with_local_record("request_id", "123"));
     ///
-    /// info!("Processing request"); // Will include service="api", version="1.0.0", request_id="123"
+    /// info!("Processing request"); // Will include service="api", version="1.0.0"
     /// ```
     #[must_use]
     pub fn with_default_record(
@@ -164,12 +161,12 @@ impl ContextLogger {
     /// use context_logger::{ContextLogger, LogValue};
     ///
     /// let logger = ContextLogger::new(env_logger::builder().build())
-    ///         .with_default_record_fn("timestamp", |_record| {
+    ///     .with_default_record_fn("timestamp", |_record| {
     ///          Utc::now().to_rfc3339().to_string()
-    ///         });
+    ///     });
     /// logger.init(LevelFilter::Info);
     ///
-    /// info!("Hello"); // The "timestamp" field will contain an RFC 3339 timestamp
+    /// info!("Hello");  // Will include timestamp="..."
     /// ```
     #[must_use]
     pub fn with_default_record_fn<V: Into<LogValue>>(
