@@ -6,13 +6,40 @@
 
 <!-- ANCHOR: description -->
 
-A lightweight, ergonomic library for adding structured context to your logs.
+A small structured context propagation layer for the standard Rust [`log`]
+ecosystem.
 
-`context-logger` enhances the standard Rust [`log`] crate ecosystem by allowing
-you to attach rich contextual information to your log messages without changing
-your existing logging patterns.
+`context-logger` keeps your existing `log::info!`, `log::warn!`, etc. calls
+unchanged and adds scoped structured context on top — inherited request-level
+fields, local operation fields, computed defaults, and async-safe propagation.
 
 <!-- ANCHOR_END: description -->
+
+## Why context-logger?
+
+The `log` crate is the de facto logging facade in Rust: small, stable, and
+widely adopted. Many projects rely on it and do not want to migrate their
+instrumentation model.
+
+Structured key-value logging — attaching `request_id`, `user_id`, `timestamp` —
+requires passing those values through every function call stack. With `tracing`
+this is automatic via spans, but tracing brings a rich (and sometimes heavy)
+instrumentation framework that some projects do not need.
+
+`context-logger` fills the gap between raw `log` calls and full tracing. It
+wraps any `log::Log` implementation and propagates scoped structured context
+through function boundaries and across `.await` points, without requiring
+callers to accept or forward additional parameters.
+
+### Is this a replacement for tracing?
+
+No.
+
+Use `tracing` if you need spans, subscribers, layers, callsites, and a full
+instrumentation framework.
+
+Use `context-logger` if your project already uses `log` and you only need scoped
+structured context propagation without migrating to a new logging crate.
 
 ## Usage
 
@@ -24,7 +51,7 @@ Add `context-logger` to your `Cargo.toml`:
 [dependencies]
 context-logger = "0.2"
 log = { version = "0.4", features = ["kv_serde"] }
-env_logger = "0.11"
+env_logger = { version = "0.11", features = ["kv"] }
 ```
 
 Then, you can use it in your code:

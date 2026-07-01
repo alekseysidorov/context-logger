@@ -2,19 +2,27 @@
 //!
 #![doc = include_utils::include_md!("README.md:description")]
 //!
-//! Modern applications often need rich, structured context in logs to provide
-//! insight into runtime behavior. This library simplifies the process by:
+//! ## How it works
 //!
-//! - Adding structured context to logs without modifying the existing logging statements.
-//! - Propagating log context across async boundaries.
-//! - Allowing dynamic context updates.
-//! - Supporting nested contexts to build hierarchical relationships.
+//! When a log record flows through `ContextLogger`, fields are resolved in this order:
 //!
-//! This library provides a wrapper around other existing logger implementations,
-//! acting as a middleware layer that enriches log records with additional context before
-//! passing them to the underlying logger. It works with any logger that implements the
-//! standard [`Log`](log::Log) trait, making it compatible with popular logging frameworks like
-//! [`env_logger`], [`log4rs`] and others.
+//! 1. Static default records (e.g. `service`, `version`)
+//! 2. Computed default records (e.g. `timestamp`, `level`)
+//! 3. Inherited records from all parent scopes
+//! 4. Local records of the active scope
+//!
+//! Later fields with the same key shadow earlier ones — "last write wins".
+//!
+//! The scope stack is thread-local: each thread maintains its own independent stack
+//! ensuring thread-safety without expensive synchronization.
+//!
+//! ## Compatibility
+//!
+//! `ContextLogger` wraps any type implementing [`log::Log`]. For structured key-value
+//! output, pair it with a logger that supports the `kv` feature (e.g. `env_logger`
+//! with `features = ["kv"]`).
+//!
+//! [`log::Log`]: https://docs.rs/log/latest/log/trait.Log.html
 //!
 //! ## Basic example
 //!
@@ -53,9 +61,7 @@ pub use self::{
 /// scope records to log records. These records are taken from the
 /// current scope stack, which is managed by [`LogScope`].
 ///
-/// # Example
-///
-#[doc = include_utils::include_md!("README.md:basic_example")]
+/// See the [crate-level docs](index.html) for an overview and examples.
 ///
 /// See [`LogContext`] for more information on how to create and manage scope records.
 pub struct ContextLogger {
