@@ -22,9 +22,9 @@ Add `context-logger` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-context-logger = "0.1.0"
+context-logger = "0.2"
 log = { version = "0.4", features = ["kv_serde"] }
-env_logger = "0.10"
+env_logger = "0.11"
 ```
 
 Then, you can use it in your code:
@@ -36,25 +36,35 @@ use context_logger::{ContextLogger, LogContext, LogContextExt as _};
 use log::info;
 
 fn main() {
-    // Create a logger.
-    let env_logger = env_logger::builder().build();
-    let max_level = env_logger.filter();
-    // Wrap it with ContextLogger to enable context propagation.
-    let context_logger = ContextLogger::new(env_logger)
-        // Add version default record.
-        .with_default_record("version", "1.0.0");
-    // Initialize the resulting logger.
-    context_logger.init(max_level);
-    // Create a context.
+    // Create an underlying logger instance.
+    let env_logger = env_logger::builder()
+         .filter_level(log::LevelFilter::Info)
+         .build();
+    let filter = env_logger.filter();
+     // Wrap it with ContextLogger to enable context propagation.
+    let logger = ContextLogger::new(env_logger)
+         // Add static default records (static fields).
+         .with_default_record("service", "api")
+         // Add computed default records (per-event fields).
+         .with_default_record_fn("timestamp", |_record| {
+            chrono::Utc::now().to_rfc3339()
+         })
+         .with_default_record_fn("level", |record| record.level().to_string());
+     // Initialize the resulting logger.
+    logger.init(filter);
+
+    // Create a context with properties.
     let context = LogContext::new()
         // Record that will be inherited by child contexts.
         .with_inherited_record("request_id", "req-123")
         // Local record that will only be present in this context.
         .with_local_record("user_id", 42);
+
     // Use the context.
     context.in_scope(|| {
-        // Log with context automatically attached
-        info!("Processing request"); // Will include version=1.0.0 request_id=req-123 and user_id=42  
+        // Log with context automatically attached:
+        // service=api version=1.0.0 request_id=req-123 user_id=42 timestamp="2026-05-30T17:46:48.610Z""
+        info!("Processing request");
     })
 }
 ```
@@ -73,12 +83,13 @@ use context_logger::{ContextLogger, LogContext, FutureExt, LogScope};
 use log::info;
 
 async fn process_user_data(user_id: &str) {
-    let context = LogContext::new().with_local_record("user_id", user_id);
+    let context = LogContext::new()
+        .with_local_record("user_id", user_id);
 
     async {
         info!("Processing user data"); // Includes user_id
 
-        // Context automatically propagates through .await points
+        // Context automatically propagates through .await points.
         fetch_user_preferences().await;
 
         info!("User data processed"); // Still includes user_id
@@ -88,13 +99,14 @@ async fn process_user_data(user_id: &str) {
 }
 
 async fn fetch_user_preferences() {
-    // Add additional context for this specific operation
+    // Add additional record for this operation.
     LogScope::add_record("operation", "fetch_preferences");
     info!("Fetching preferences"); // Includes both user_id and operation
 }
 
 async fn spawn_background_job(user_id: &str) {
-    let context = LogContext::new().with_local_record("user_id", user_id);
+    let context = LogContext::new()
+        .with_local_record("user_id", user_id);
 
     async {
         // The scope stack is thread-local: capture the active context

@@ -55,27 +55,7 @@ pub use self::{
 ///
 /// # Example
 ///
-/// ```
-/// use log::{info, LevelFilter};
-/// use context_logger::{ContextLogger, LogContext, LogScope};
-///
-/// // Create a logger.
-/// let env_logger = env_logger::builder().build();
-/// let max_level = env_logger.filter();
-/// // Wrap it with ContextLogger to enable context propagation.
-/// let context_logger = ContextLogger::new(env_logger);
-/// // Initialize the resulting logger.
-/// context_logger.init(max_level);
-///
-/// // Create a context with properties
-/// let ctx = LogContext::new()
-///     .with_local_record("request_id", "req-123")
-///     .with_local_record("user_id", 42);
-///
-/// // Use the context while logging
-/// let _guard = LogScope::enter(ctx);
-/// info!("Processing request"); // Will include request_id and user_id records
-/// ```
+#[doc = include_utils::include_md!("README.md:basic_example")]
 ///
 /// See [`LogContext`] for more information on how to create and manage scope records.
 pub struct ContextLogger {
