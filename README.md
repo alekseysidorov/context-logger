@@ -15,31 +15,51 @@ fields, local operation fields, computed defaults, and async-safe propagation.
 
 <!-- ANCHOR_END: description -->
 
-## Why context-logger?
+## Why `context-logger`?
 
-The `log` crate is the de facto logging facade in Rust: small, stable, and
-widely adopted. Many projects rely on it and do not want to migrate their
-instrumentation model.
+The standard `log` crate is a small and widely used logging facade, but it does
+not provide scoped context propagation by itself. This becomes noisy when every
+log line should carry fields like `request_id`, `user_id`, `tenant_id`, or
+`operation`.
 
-Structured key-value logging — attaching `request_id`, `user_id`, `timestamp` —
-requires passing those values through every function call stack. With `tracing`
-this is automatic via spans, but tracing brings a rich (and sometimes heavy)
-instrumentation framework that some projects do not need.
+`context-logger` fills this gap by adding a small runtime context layer on top
+of ordinary `log` calls:
 
-`context-logger` fills the gap between raw `log` calls and full tracing. It
-wraps any `log::Log` implementation and propagates scoped structured context
-through function boundaries and across `.await` points, without requiring
-callers to accept or forward additional parameters.
+- **Works with existing `log` calls** — keep using `log::info!`, `log::warn!`,
+  and your existing logger backend.
+- **Fully dynamic context** — create, extend, merge, and pass context as
+  ordinary runtime data. Add fields at any point in your code without declaring
+  spans.
+- **Scoped structured fields** — attach request-level fields, operation-level
+  fields, and default fields to every log record.
+- **Async propagation** — carry context through `.await` with `FutureExt`.
 
-### Is this a replacement for tracing?
+### Is this a replacement for `tracing`?
 
 No.
 
-Use `tracing` if you need spans, subscribers, layers, callsites, and a full
-instrumentation framework.
+`tracing` is a richer instrumentation framework built around spans, subscribers,
+layers, and callsites.
 
-Use `context-logger` if your project already uses `log` and you only need scoped
-structured context propagation without migrating to a new logging crate.
+`context-logger` keeps the model smaller: context is ordinary runtime data
+attached to regular `log` records. Existing `log::info!`, `log::warn!`, etc.
+calls stay unchanged.
+
+### What about traces?
+
+`context-logger` intentionally focuses on logs.
+
+If you need distributed traces as well, use it together with a tracing library
+such as [`fastrace`].
+
+This keeps the two concerns separate:
+
+- `context-logger` enriches ordinary `log` records with scoped structured
+  context;
+- `fastrace` records timeline spans and exports traces through OpenTelemetry.
+
+Together they cover structured logs and distributed traces without requiring all
+logging to go through the `tracing` instrumentation model.
 
 ## Usage
 
@@ -49,6 +69,7 @@ Add `context-logger` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
+chrono = "0.4"
 context-logger = "0.2"
 log = { version = "0.4", features = ["kv_serde"] }
 env_logger = { version = "0.11", features = ["kv"] }
@@ -84,13 +105,12 @@ fn main() {
     let context = LogContext::new()
         // Record that will be inherited by child contexts.
         .with_inherited_record("request_id", "req-123")
-        // Local record that will only be present in this context.
-        .with_local_record("user_id", 42);
+        .with_inherited_record("user_id", 42);
 
     // Use the context.
     context.in_scope(|| {
         // Log with context automatically attached:
-        // service=api version=1.0.0 request_id=req-123 user_id=42 timestamp="..."
+        // service=api timestamp=... level=INFO request_id=req-123 user_id=42
         info!("Processing request");
     })
 }
@@ -111,14 +131,12 @@ use log::info;
 
 async fn process_user_data(user_id: &str) {
     let context = LogContext::new()
-        .with_local_record("user_id", user_id);
-
+          .with_inherited_record("user_id", user_id);
+    
     async {
         info!("Processing user data"); // Includes user_id
-
         // Context automatically propagates through .await points.
         fetch_user_preferences().await;
-
         info!("User data processed"); // Still includes user_id
     }
     .in_log_context(context)
@@ -133,10 +151,10 @@ async fn fetch_user_preferences() {
 
 async fn spawn_background_job(user_id: &str) {
     let context = LogContext::new()
-        .with_local_record("user_id", user_id);
+         .with_inherited_record("user_id", user_id);
 
     async {
-        // The scope stack is thread-local: capture the active context
+         // The scope stack is thread-local: capture the active context
         // before crossing the task boundary with tokio::spawn.
         let context = LogScope::current_context();
         tokio::spawn(
@@ -162,3 +180,4 @@ details.
 
 [`log`]: https://crates.io/crates/log
 [LICENSE]: ./LICENSE
+[`fastrace`]: https://docs.rs/fastrace
