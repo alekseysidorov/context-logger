@@ -39,19 +39,15 @@ of ordinary `log` calls:
 
 > No. `context-logger` is focused on logs, not traces.
 
-`tracing` is a richer instrumentation framework built around spans, subscribers,
-layers, and callsites.
+`tracing` puts logs and spans into one instrumentation model.
 
-`context-logger` keeps the model smaller: context is ordinary runtime data
-attached to regular `log` records. Existing `log::info!`, `log::warn!`, etc.
-calls stay unchanged.
+`context-logger` keeps logs as regular `log` records and adds scoped structured
+context to them. Context remains ordinary runtime data, so existing
+`log::info!`, `log::warn!`, etc. calls stay unchanged.
 
-### What about traces?
+> What about traces?
 
-`context-logger` intentionally focuses on logs.
-
-If you need distributed traces as well, use it together with a tracing library
-such as [`fastrace`].
+Use a dedicated tracing library such as [`fastrace`].
 
 This keeps the two concerns separate:
 
