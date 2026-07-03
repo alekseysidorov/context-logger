@@ -31,12 +31,13 @@ of ordinary `log` calls:
   ordinary runtime data. Add fields at any point in your code without declaring
   spans.
 - **Scoped structured fields** — attach request-level fields, operation-level
-  fields, and default fields to every log record.
+  fields, and default fields to every log record, with explicit control over
+  what is inherited by child scopes.
 - **Async propagation** — carry context through `.await` with `FutureExt`.
 
 ### Is this a replacement for `tracing`?
 
-No.
+> No. `context-logger` is focused on logs, not traces.
 
 `tracing` is a richer instrumentation framework built around spans, subscribers,
 layers, and callsites.
@@ -86,19 +87,19 @@ use log::info;
 fn main() {
     // Create an underlying logger instance.
     let env_logger = env_logger::builder()
-         .filter_level(log::LevelFilter::Info)
-         .build();
+        .filter_level(log::LevelFilter::Info)
+        .build();
     let filter = env_logger.filter();
-     // Wrap it with ContextLogger to enable context propagation.
+    // Wrap it with ContextLogger to enable context propagation.
     let logger = ContextLogger::new(env_logger)
-         // Add static default records (static fields).
-         .with_default_record("service", "api")
-         // Add computed default records (per-event fields).
-         .with_default_record_fn("timestamp", |_record| {
+        // Add static default records (static fields).
+        .with_default_record("service", "api")
+        // Add computed default records (per-event fields).
+        .with_default_record_fn("timestamp", |_log_record| {
             chrono::Utc::now().to_rfc3339()
-         })
-         .with_default_record_fn("level", |record| record.level().to_string());
-     // Initialize the resulting logger.
+        })
+        .with_default_record_fn("level", |record| record.level().to_string());
+    // Initialize the resulting logger.
     logger.init(filter);
 
     // Create a context with properties.
@@ -131,8 +132,8 @@ use log::info;
 
 async fn process_user_data(user_id: &str) {
     let context = LogContext::new()
-          .with_inherited_record("user_id", user_id);
-    
+        .with_inherited_record("user_id", user_id);
+
     async {
         info!("Processing user data"); // Includes user_id
         // Context automatically propagates through .await points.
@@ -151,10 +152,10 @@ async fn fetch_user_preferences() {
 
 async fn spawn_background_job(user_id: &str) {
     let context = LogContext::new()
-         .with_inherited_record("user_id", user_id);
+        .with_inherited_record("user_id", user_id);
 
     async {
-         // The scope stack is thread-local: capture the active context
+        // The scope stack is thread-local: capture the active context
         // before crossing the task boundary with tokio::spawn.
         let context = LogScope::current_context();
         tokio::spawn(
