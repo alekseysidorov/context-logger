@@ -102,7 +102,8 @@ fn main() {
     let context = LogContext::new()
         // Record that will be inherited by child contexts.
         .with_inherited_record("request_id", "req-123")
-        .with_inherited_record("user_id", 42);
+        .with_inherited_record("user_id", 42)
+        .with_local_record("http_method", "GET");
 
     // Use the context.
     context.in_scope(|| {

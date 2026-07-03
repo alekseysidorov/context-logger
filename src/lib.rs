@@ -19,8 +19,8 @@
 //! ## Compatibility
 //!
 //! `ContextLogger` wraps any type implementing [`log::Log`]. For structured key-value
-//! output, pair it with a logger that supports the `kv` feature (e.g. `env_logger`
-//! with `features = ["kv"]`).
+//! output, pair it with a logger that supports the `kv` feature (e.g. [`env_logger`]
+//! with `features = ["kv"]` or  [`log4rs`]).
 //!
 //! [`log::Log`]: https://docs.rs/log/latest/log/trait.Log.html
 //!
@@ -130,8 +130,10 @@ impl ContextLogger {
     /// use context_logger::{ContextLogger, LogContext, LogScope};
     ///
     /// // Create a logger with default records
-    /// let logger = ContextLogger::new(env_logger::builder().build())
-    ///     .with_default_record("service", "api")
+    /// let logger = ContextLogger::new(env_logger::builder()
+    ///       .filter_level(log::LevelFilter::Info)
+    ///       .build())
+    ///       .with_default_record("service", "api")
     ///     .with_default_record("version", "1.0.0");
     /// // Initialize it
     /// logger.init(LevelFilter::Info);
@@ -166,8 +168,10 @@ impl ContextLogger {
     /// use log::{info, LevelFilter};
     /// use context_logger::{ContextLogger, LogValue};
     ///
-    /// let logger = ContextLogger::new(env_logger::builder().build())
-    ///     .with_default_record_fn("timestamp", |_record| {
+    /// let logger = ContextLogger::new(env_logger::builder()
+    ///       .filter_level(log::LevelFilter::Info)
+    ///       .build())
+    ///       .with_default_record_fn("timestamp", |_record| {
     ///          Utc::now().to_rfc3339().to_string()
     ///     });
     /// logger.init(LevelFilter::Info);
