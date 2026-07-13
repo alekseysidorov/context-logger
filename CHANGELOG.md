@@ -8,8 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
-- Updated terminology: renamed "log record" to "log field" to avoid
-  confusion with `log::Record`
+- Updated terminology: renamed "log record" to "log field" to avoid confusion
+  with `log::Record`
 - Introduced a new method `ContextLogger::with_default_field_fn` that allows
   injecting custom default fields based on log record metadata, enabling more
   flexible and dynamic logging contexts.
@@ -33,9 +33,9 @@ and this project adheres to
 - _breaking_ Replaced `LogContext::enter` instance method with the
   `LogScope::enter(context)` static method; `LogScope` is now the explicit guard
   type that keeps the context active and removes it from the stack on drop
-- _breaking_ Moved `LogContext::add_record` to `LogScope::add_local_field`; dynamic
-  field insertion is now clearly associated with the active scope rather than
-  the context builder
+- _breaking_ Moved `LogContext::add_record` to `LogScope::add_local_field`;
+  dynamic field insertion is now clearly associated with the active scope rather
+  than the context builder
 - _breaking_ Renamed `LogContextGuard` to `LogScope` in the public API
 - _breaking_ Renamed `ContextValue` to `LogValue` to better reflect its role in
   structured logging
