@@ -52,8 +52,8 @@ impl LogScope {
     ///
     /// async fn my_async_fn() {
     ///     let ctx = LogContext::new()
-    ///         .with_local_record("request_id", "req-123")
-    ///         .with_local_record("user_id", 42);
+    ///          .with_local_field("request_id", "req-123")
+    ///          .with_local_field("user_id", 42);
     ///     // WARNING: This context will remain active until this
     ///     // guard is dropped...
     ///     let _guard = LogScope::enter(ctx);
@@ -82,7 +82,7 @@ impl LogScope {
     /// ```
     /// use context_logger::{LogContext, LogScope};
     ///
-    /// let context = LogContext::new().with_local_record("request_id", "req-123");
+    /// let context = LogContext::new().with_local_field("request_id", "req-123");
     /// let result = LogScope::in_scope(
     ///     context,
     ///     || 40 + 2,

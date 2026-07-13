@@ -6,12 +6,34 @@
 //!
 //! When a log record flows through `ContextLogger`, fields are resolved in this order:
 //!
-//! 1. Static default records (e.g. `service`, `version`)
-//! 2. Computed default records (e.g. `timestamp`, `level`)
-//! 3. Inherited records from all parent scopes
-//! 4. Local records of the active scope
+//! 1. Static default fields (e.g. `service`, `version`)
+//! 2. Computed default fields (e.g. `timestamp`, `level`)
+//! 3. Inherited fields from all parent scopes
+//! 4. Local fields of the active scope
 //!
-//! Later fields with the same key shadow earlier ones — "last write wins".
+//! These fields are merged into the [`log::Record`]'s key-value store — "last write wins"
+//! for duplicate keys.
+//!
+//! ## Concepts
+//!
+//! The `log` crate models structured logging through a [`log::kv::Source`] — a push-based
+//! iterator over key-value pairs attached to a [`log::Record`]. Context logger
+//! adds an additional layer that injects scoped fields into that source.
+//!
+//! - **[`log::Record`]** — the log entry produced by `log::info!`, `log::warn!`,
+//!   etc. Each record carries a [`key_values()`] source that consumers visit
+//!   to extract structured attributes.
+//! - **Field** — a key-value pair (`&str → LogValue`) attached to a log record's
+//!   `Source`. Fields carry scoped context like `request_id` or `user_id`.
+//! - **[`LogFields`]** — a collection of fields that implements the extension logic
+//!   for the log record's source. When the record flows through [`ContextLogger`],
+//!   its fields are merged into the record's own `Source`.
+//! - **[`LogContext`]** — the blueprint for fields. It splits fields into
+//!    [`local`](LogContext::local) and [`inherited`](LogContext::inherited)
+//!   categories with different propagation semantics.
+//! - **[`LogScope`] guard** — activates a `LogContext`, pushing its fields onto
+//!   the thread-local scope stack. Fields are resolved when a log record flows through
+//!   the logger.
 //!
 //! The scope stack is thread-local: each thread maintains its own independent stack
 //! ensuring thread-safety without expensive synchronization.
@@ -55,11 +77,11 @@ pub use self::{
     value::LogValue,
 };
 
-/// A logger wrapper that enhances log records with scope fields.
+/// A logger wrapper that enhances [`log::Record`] with scoped fields.
 ///
-/// `ContextLogger` wraps an existing logging implementation and adds additional
-/// scoped fields to log records. These fields are taken from the
-/// current scope stack, which is managed by [`LogScope`].
+/// `ContextLogger` wraps an existing logging implementation and merges additional
+/// fields from the current scope stack into each [`log::Record`]. These fields
+/// are taken from the scope stack managed by [`LogScope`].
 ///
 /// See the [crate-level docs](index.html) for an overview and examples.
 ///
@@ -110,9 +132,9 @@ impl ContextLogger {
         log::set_boxed_logger(Box::new(self))
     }
 
-    /// Adds a default field that will be included in all log entries.
+    /// Adds a default field that will be included in every [`log::Record`].
     ///
-    /// Default fields are automatically added to all log records, regardless of
+    /// Default fields are automatically merged into each log record, regardless of
     /// the current context. They are defined when the logger is created and remain
     /// constant throughout the application's lifetime.
     ///
@@ -150,12 +172,12 @@ impl ContextLogger {
         self
     }
 
-    /// Adds a dynamic default field computed by the given closure for each log entry.
+    /// Adds a dynamic default field computed by the given closure for every [`log::Record`].
     ///
-    /// Like [`Self::with_default_field`], the field is included in all log records.
-    /// However, unlike the static variant, the value is *computed at log time* by invoking the
-    /// provided closure with the current [`log::Record`]. This makes it suitable for fields
-    /// whose values are not known upfront, such as timestamps or thread IDs.
+    /// Like [`Self::with_default_field`], the field is merged into each log record.
+    /// However, unlike the static variant, the value is *computed at log time* by invoking
+    /// the provided closure with the current [`log::Record`] itself. This makes it suitable
+    /// for fields whose values are not known upfront, such as timestamps or thread IDs.
     ///
     /// **Note!** *The order in which dynamic default field functions are evaluated is not guaranteed.*
     ///

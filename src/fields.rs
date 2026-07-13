@@ -7,10 +7,13 @@ pub type LogFieldsIntoIter = std::collections::hash_map::IntoIter<Cow<'static, s
 pub type LogField = (Cow<'static, str>, LogValue);
 pub type LogFieldRef<'a> = (&'a Cow<'static, str>, &'a LogValue);
 
-/// A set of fields that can be attached to a logging scope.
+/// A set of key-value fields that can be attached to a logging scope.
 ///
-/// [`LogFields`] represents a set of key-value pairs that can be
-/// added to log messages when the log context scope is active.
+/// [`LogFields`] stores structured attributes that extend
+/// the key-values source of a [`log::Record`]. When a record flows through
+/// [`crate::ContextLogger`], these fields are merged into the record's own
+/// [`log::kv::Source`] so they appear in the output alongside the
+/// user-provided key-values.
 ///
 /// # Ordering
 ///
