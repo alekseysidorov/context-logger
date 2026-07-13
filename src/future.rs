@@ -10,12 +10,13 @@ use crate::{LogContext, scope::LogScope};
 ///
 /// This trait adds ability to attach a [`LogContext`] for any [`Future`],
 /// ensuring that logs emitted during the future's execution will include
-/// the contextual properties even if the future is polled across different threads.
+/// the contextual properties even if the future is polled across different
+/// threads.
 pub trait FutureExt: Sized + crate::private::Sealed {
     /// Attaches a log context to this future.
     ///
-    /// The attached [context](LogContext) will be activated every time the instrumented
-    /// future is polled.
+    /// The attached [context](LogContext) will be activated every time the
+    /// instrumented future is polled.
     ///
     /// # Examples
     ///
@@ -61,7 +62,8 @@ where
 ///
 /// # Note
 ///
-/// If the wrapped future will panic, the next `poll` invocation will panic unconditionally.
+/// If the wrapped future will panic, the next `poll` invocation will panic
+/// unconditionally.
 #[pin_project]
 #[derive(Debug)]
 pub struct LogContextFuture<F> {

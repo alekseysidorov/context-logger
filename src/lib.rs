@@ -1,57 +1,53 @@
 //! # Overview
-//!
 #![doc = include_utils::include_md!("README.md:description")]
 //!
 //! ## How it works
 //!
-//! When a log record flows through `ContextLogger`, fields are resolved in this order:
+//! When a log record flows through `ContextLogger`, fields are resolved in this
+//! order:
 //!
 //! 1. Static default fields (e.g. `service`, `version`)
 //! 2. Computed default fields (e.g. `timestamp`, `level`)
 //! 3. Inherited fields from all parent scopes
 //! 4. Local fields of the active scope
 //!
-//! These fields are merged into the [`log::Record`]'s key-value store — "last write wins"
-//! for duplicate keys.
+//! These fields are merged into the [`log::Record`]'s key-value store — "last
+//! write wins" for duplicate keys.
 //!
 //! ## Concepts
 //!
-//! The `log` crate models structured logging through a [`log::kv::Source`] — a push-based
-//! iterator over key-value pairs attached to a [`log::Record`]. Context logger
-//! adds an additional layer that injects scoped fields into that source.
+//! The `log` crate models structured logging through a [`log::kv::Source`] — a
+//! push-based iterator over key-value pairs attached to a [`log::Record`].
+//! Context logger adds an additional layer that injects scoped fields into that
+//! source.
 //!
-//! - **[`log::Record`]** — the log entry produced by `log::info!`, `log::warn!`,
-//!   etc. Each record carries a [`key_values()`] source that consumers visit
-//!   to extract structured attributes.
-//! - **Field** — a key-value pair (`&str → LogValue`) attached to a log record's
+//! - **[`log::Record`]** — the log entry produced by `log::info!`, `log::warn!`, etc. Each record
+//!   carries a [`log::Record::key_values`] source that consumers visit to extract structured
+//!   attributes.
+//! - **Field** — a key-value pair ([`&str`], [`log::kv::Value`]) attached to a log record's
 //!   `Source`. Fields carry scoped context like `request_id` or `user_id`.
-//! - **[`LogFields`]** — a collection of fields that implements the extension logic
-//!   for the log record's source. When the record flows through [`ContextLogger`],
-//!   its fields are merged into the record's own `Source`.
+//! - **[`LogFields`]** — a collection of fields that implements the extension logic for the log
+//!   record's source. When the record flows through [`ContextLogger`], its fields are merged into
+//!   the record's own `Source`.
 //! - **[`LogContext`]** — the blueprint for fields. It splits fields into
-//!    [`local`](LogContext::local) and [`inherited`](LogContext::inherited)
-//!   categories with different propagation semantics.
-//! - **[`LogScope`] guard** — activates a `LogContext`, pushing its fields onto
-//!   the thread-local scope stack. Fields are resolved when a log record flows through
-//!   the logger.
+//!   [`local`](LogContext::local) and [`inherited`](LogContext::inherited) categories with
+//!   different propagation semantics.
+//! - **[`LogScope`] guard** — activates a `LogContext`, pushing its fields onto the thread-local
+//!   scope stack. Fields are resolved when a log record flows through the logger.
 //!
-//! The scope stack is thread-local: each thread maintains its own independent stack
-//! ensuring thread-safety without expensive synchronization.
+//! The scope stack is thread-local: each thread maintains its own independent
+//! stack ensuring thread-safety without expensive synchronization.
 //!
 //! ## Compatibility
 //!
-//! `ContextLogger` wraps any type implementing [`log::Log`]. For structured key-value
-//! output, pair it with a logger that supports the `kv` feature (e.g. [`env_logger`]
-//! with `features = ["kv"]` or  [`log4rs`]).
-//!
-//! [`log::Log`]: https://docs.rs/log/latest/log/trait.Log.html
+//! `ContextLogger` wraps any type implementing [`log::Log`]. For structured
+//! key-value output, pair it with a logger that supports the `kv` feature (e.g.
+//! [`env_logger`] with `features = ["kv"]` or  [`log4rs`]).
 //!
 //! ## Basic example
-//!
 #![doc = include_utils::include_md!("README.md:basic_example")]
 //!
 //! ## Async Context Propagation
-//!
 #![doc = include_utils::include_md!("README.md:async_example")]
 //!
 //! [`env_logger`]: https://docs.rs/env_logger/latest/env_logger
@@ -79,13 +75,14 @@ pub use self::{
 
 /// A logger wrapper that enhances [`log::Record`] with scoped fields.
 ///
-/// `ContextLogger` wraps an existing logging implementation and merges additional
-/// fields from the current scope stack into each [`log::Record`]. These fields
-/// are taken from the scope stack managed by [`LogScope`].
+/// `ContextLogger` wraps an existing logging implementation and merges
+/// additional fields from the current scope stack into each [`log::Record`].
+/// These fields are taken from the scope stack managed by [`LogScope`].
 ///
 /// See the [crate-level docs](index.html) for an overview and examples.
 ///
-/// See [`LogContext`] for more information on how to create and manage scope fields.
+/// See [`LogContext`] for more information on how to create and manage scope
+/// fields.
 pub struct ContextLogger {
     inner: Box<dyn log::Log>,
     default_fields: LogFields,
@@ -93,7 +90,8 @@ pub struct ContextLogger {
 }
 
 impl ContextLogger {
-    /// Creates a new [`ContextLogger`] that wraps the given logging implementation.
+    /// Creates a new [`ContextLogger`] that wraps the given logging
+    /// implementation.
     ///
     /// The inner logger will receive log records enhanced with scope fields
     /// from the current scope stack.
@@ -110,7 +108,8 @@ impl ContextLogger {
 
     /// Initializes the global logger with the context logger.
     ///
-    /// This should be called early in the execution of a Rust program. Any log events that occur before initialization will be ignored.
+    /// This should be called early in the execution of a Rust program. Any log
+    /// events that occur before initialization will be ignored.
     ///
     /// # Panics
     ///
@@ -122,7 +121,8 @@ impl ContextLogger {
 
     /// Initializes the global logger with the context logger.
     ///
-    /// This should be called early in the execution of a Rust program. Any log events that occur before initialization will be ignored.
+    /// This should be called early in the execution of a Rust program. Any log
+    /// events that occur before initialization will be ignored.
     ///
     /// # Errors
     ///
@@ -134,16 +134,17 @@ impl ContextLogger {
 
     /// Adds a default field that will be included in every [`log::Record`].
     ///
-    /// Default fields are automatically merged into each log record, regardless of
-    /// the current context. They are defined when the logger is created and remain
-    /// constant throughout the application's lifetime.
+    /// Default fields are automatically merged into each log record, regardless
+    /// of the current context. They are defined when the logger is created
+    /// and remain constant throughout the application's lifetime.
     ///
     /// # Behavior with Duplicate Keys
     ///
-    /// When logging, default fields are added first, followed by fields from the current
-    /// context. If multiple fields with the same key exist, the behavior depends on the
-    /// underlying logger implementation. In most implementations, later fields with the
-    /// same key will typically replace earlier ones.
+    /// When logging, default fields are added first, followed by fields from
+    /// the current context. If multiple fields with the same key exist, the
+    /// behavior depends on the underlying logger implementation. In most
+    /// implementations, later fields with the same key will typically
+    /// replace earlier ones.
     ///
     /// # Example
     ///
@@ -172,14 +173,17 @@ impl ContextLogger {
         self
     }
 
-    /// Adds a dynamic default field computed by the given closure for every [`log::Record`].
+    /// Adds a dynamic default field computed by the given closure for every
+    /// [`log::Record`].
     ///
-    /// Like [`Self::with_default_field`], the field is merged into each log record.
-    /// However, unlike the static variant, the value is *computed at log time* by invoking
-    /// the provided closure with the current [`log::Record`] itself. This makes it suitable
-    /// for fields whose values are not known upfront, such as timestamps or thread IDs.
+    /// Like [`Self::with_default_field`], the field is merged into each log
+    /// record. However, unlike the static variant, the value is *computed
+    /// at log time* by invoking the provided closure with the current
+    /// [`log::Record`] itself. This makes it suitable for fields whose
+    /// values are not known upfront, such as timestamps or thread IDs.
     ///
-    /// **Note!** *The order in which dynamic default field functions are evaluated is not guaranteed.*
+    /// **Note!** *The order in which dynamic default field functions are
+    /// evaluated is not guaranteed.*
     ///
     /// # Example
     ///

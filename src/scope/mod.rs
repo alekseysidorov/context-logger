@@ -7,10 +7,11 @@ use crate::{LogContext, LogValue};
 
 pub mod stack;
 
-/// A guard that represents an active logging context on the current thread's scope stack.
+/// A guard that represents an active logging context on the current thread's
+/// scope stack.
 ///
-/// When the guard is dropped, the context is automatically removed from the stack.
-/// Created by [`LogScope::enter`].
+/// When the guard is dropped, the context is automatically removed from the
+/// stack. Created by [`LogScope::enter`].
 ///
 /// # Examples
 ///
@@ -37,15 +38,17 @@ pub struct LogScope {
 }
 
 impl LogScope {
-    /// Pushes the given context onto the current thread's scope stack and returns a guard.
+    /// Pushes the given context onto the current thread's scope stack and
+    /// returns a guard.
     ///
-    /// The context remains active until the returned guard is dropped, at which point
-    /// it is automatically removed from the stack.
+    /// The context remains active until the returned guard is dropped, at which
+    /// point it is automatically removed from the stack.
     ///
     /// # In Asynchronous Code
     ///
-    /// *Warning:* in asynchronous code [`Self::enter`] should be used very carefully or avoided entirely.
-    /// Holding the drop guard across `.await` points will result in incorrect logs:
+    /// *Warning:* in asynchronous code [`Self::enter`] should be used very
+    /// carefully or avoided entirely. Holding the drop guard across
+    /// `.await` points will result in incorrect logs:
     ///
     /// ```rust
     /// use context_logger::{LogContext, LogScope};
@@ -72,10 +75,11 @@ impl LogScope {
         }
     }
 
-    /// Enters the given context, runs a closure, and exits the scope automatically.
+    /// Enters the given context, runs a closure, and exits the scope
+    /// automatically.
     ///
-    /// This is a convenience method for short synchronous sections where context
-    /// should be active only during closure execution.
+    /// This is a convenience method for short synchronous sections where
+    /// context should be active only during closure execution.
     ///
     /// # Examples
     ///
@@ -136,15 +140,16 @@ impl LogScope {
 
     /// Extracts the currently active logging context.
     ///
-    /// This is useful for propagating context when spawning new threads or async tasks,
-    /// allowing child tasks to inherit logging information from the current scope.
+    /// This is useful for propagating context when spawning new threads or
+    /// async tasks, allowing child tasks to inherit logging information
+    /// from the current scope.
     ///
     /// # Example
     ///
     /// ```no_run
     #[doc = include_str!("../../examples/current_context.rs")]
     /// ```
-    ///
+    /// 
     /// # Notes
     ///
     /// - Returns an empty context if there is no active scope.
@@ -174,9 +179,11 @@ impl Drop for LogScope {
     }
 }
 
-/// Extension trait for [`LogContext`] to run code within a temporary logging scope.
+/// Extension trait for [`LogContext`] to run code within a temporary logging
+/// scope.
 ///
-/// This trait provides ergonomic, method-style access to [`LogScope::in_scope`].
+/// This trait provides ergonomic, method-style access to
+/// [`LogScope::in_scope`].
 pub trait LogContextExt: Sized + crate::private::Sealed {
     /// Enters this context, runs a closure, and exits the scope automatically.
     ///

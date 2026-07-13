@@ -8,9 +8,9 @@ use crate::{LogValue, fields::LogFields};
 ///
 /// Fields are split into two categories:
 ///
-/// - **local** - fields belonging only to the current scope.
-///   They do not propagate to child scopes.
-/// - **inherited** - fields that automatically flow into all child scopes created within the current scope.
+/// - **local** - fields belonging only to the current scope. They do not propagate to child scopes.
+/// - **inherited** - fields that automatically flow into all child scopes created within the
+///   current scope.
 ///
 /// Nested scopes resolution rules:
 ///
@@ -20,7 +20,8 @@ use crate::{LogValue, fields::LogFields};
 pub struct LogContext {
     /// Fields belonging only to the current scope.
     pub local: LogFields,
-    /// Fields that automatically flow into all child scopes created within the current scope.
+    /// Fields that automatically flow into all child scopes created within the
+    /// current scope.
     pub inherited: LogFields,
 }
 

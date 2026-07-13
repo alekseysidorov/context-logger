@@ -17,8 +17,8 @@ pub type LogFieldRef<'a> = (&'a Cow<'static, str>, &'a LogValue);
 ///
 /// # Ordering
 ///
-/// The order in which fields appear is **not guaranteed**. Do not rely on any specific
-/// ordering of keys.
+/// The order in which fields appear is **not guaranteed**. Do not rely on any
+/// specific ordering of keys.
 #[derive(Debug, Clone, Default)]
 pub struct LogFields(pub(crate) HashMap<Cow<'static, str>, LogValue>);
 
@@ -29,7 +29,8 @@ impl LogFields {
         Self::default()
     }
 
-    /// Inserts a key-value pair into this collection, returning the collection for chained calls.
+    /// Inserts a key-value pair into this collection, returning the collection
+    /// for chained calls.
     ///
     /// This method takes ownership of `self`, so it can be used as part of a
     /// builder-style chain:
@@ -52,8 +53,8 @@ impl LogFields {
     /// Inserts a key-value pair into this collection.
     ///
     /// Unlike [`Self::with`], this method borrows `self` and
-    /// returns a mutable reference, allowing it to be used when chaining with other methods
-    /// that require borrowing.
+    /// returns a mutable reference, allowing it to be used when chaining with
+    /// other methods that require borrowing.
     ///
     /// # Examples
     ///
@@ -81,8 +82,9 @@ impl LogFields {
     ///
     /// # Merging policy
     ///
-    /// Keys in this collection with duplicate names will be overwritten by keys from the
-    /// provided collection. The order of keys in the resulting collection is undefined.
+    /// Keys in this collection with duplicate names will be overwritten by keys
+    /// from the provided collection. The order of keys in the resulting
+    /// collection is undefined.
     ///
     /// # Examples
     ///
@@ -146,7 +148,8 @@ impl FromIterator<LogField> for LogFields {
 
 #[cfg(test)]
 impl LogFields {
-    /// Returns a reference to the value associated with the given key, if it exists.
+    /// Returns a reference to the value associated with the given key, if it
+    /// exists.
     pub(crate) fn find(&self, key: impl AsRef<str>) -> Option<&LogValue> {
         self.0.get(&Cow::Owned(key.as_ref().to_owned()))
     }

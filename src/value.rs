@@ -2,8 +2,9 @@
 
 use std::sync::Arc;
 
-/// A sized, cloneable wrapper around `Arc<dyn erased_serde::Serialize>` that implements
-/// `serde::Serialize`. This is needed because [`log::kv::Value::from_serde`] requires `T: Sized`,
+/// A sized, cloneable wrapper around `Arc<dyn erased_serde::Serialize>` that
+/// implements `serde::Serialize`. This is needed because
+/// [`log::kv::Value::from_serde`] requires `T: Sized`,
 /// but `dyn erased_serde::Serialize` is unsized.
 #[derive(Clone)]
 struct SerdeArc(Arc<dyn erased_serde::Serialize + Send + Sync + 'static>);
@@ -25,13 +26,14 @@ impl serde::Serialize for SerdeArc {
 
 /// Represents a value that can be stored in a log field.
 ///
-/// The `LogValue` type is a flexible container designed to hold various kinds of data
-/// that can be associated with a log entry. It supports primitive types, strings, and
-/// more complex types such as those implementing [`std::fmt::Debug`], [`std::fmt::Display`],
-/// [`std::error::Error`], or [`serde::Serialize`].
+/// The `LogValue` type is a flexible container designed to hold various kinds
+/// of data that can be associated with a log entry. It supports primitive
+/// types, strings, and more complex types such as those implementing
+/// [`std::fmt::Debug`], [`std::fmt::Display`], [`std::error::Error`], or
+/// [`serde::Serialize`].
 ///
-/// This allows for rich and structured logging, enabling developers to attach meaningful
-/// context to log messages.
+/// This allows for rich and structured logging, enabling developers to attach
+/// meaningful context to log messages.
 ///
 /// # Examples
 ///
