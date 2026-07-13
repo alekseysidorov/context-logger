@@ -21,14 +21,14 @@ fn test_inherited_records_shadowing() {
     );
 
     LogContext::new()
-        .with_inherited_record("answer", 42)
-        .with_inherited_record("shadow", false)
-        .with_inherited_record("inherited_shadow", "parent")
+        .with_inherited_field("answer", 42)
+        .with_inherited_field("shadow", false)
+        .with_inherited_field("inherited_shadow", "parent")
         .in_scope(|| {
             LogContext::new()
-                .with_inherited_record("inherited_shadow", "child")
-                .with_local_record("name", "Robin")
-                .with_local_record("shadow", true)
+                .with_inherited_field("inherited_shadow", "child")
+                .with_local_field("name", "Robin")
+                .with_local_field("shadow", true)
                 .in_scope(|| {
                     log::info!("Ipsum dolor sit amet, consectetur adipiscing elit");
                 });

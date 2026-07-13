@@ -18,7 +18,7 @@ pub mod stack;
 /// use context_logger::{LogContext, LogScope};
 ///
 /// // Create a context with some data
-/// let context = LogContext::new().with_local_record("user_id", 123);
+/// let context = LogContext::new().with_local_field("user_id", 123);
 ///
 /// // Enter the context (pushes to stack)
 /// let guard = LogScope::enter(context);
@@ -95,9 +95,9 @@ impl LogScope {
         f()
     }
 
-    /// Adds a record to the currently active scope.
+    /// Adds a field to the currently active scope.
     ///
-    /// This is useful for adding records dynamically without having
+    /// This is useful for adding fields dynamically without having
     /// direct access to the current scope.
     ///
     /// # Note
@@ -106,7 +106,7 @@ impl LogScope {
     ///
     /// # Ordering
     ///
-    /// The order in which records appear in log output is **not guaranteed**.
+    /// The order in which fields appear in log output is **not guaranteed**.
     /// Do not rely on any specific ordering of keys.
     ///
     /// # Examples
@@ -116,17 +116,17 @@ impl LogScope {
     /// use log::info;
     ///
     /// fn process_request() {
-    ///     // Add a record to the current scope dynamically
-    ///     LogScope::add_record("processing_time_ms", 42);
+    ///     // Add a field to the current scope dynamically
+    ///     LogScope::add_local_field("processing_time_ms", 42);
     ///     info!("Request processed");
     /// }
     ///
     /// let _guard = LogScope::enter(LogContext::new()
-    ///     .with_local_record("request_id", "req-123"));
+    ///     .with_local_field("request_id", "req-123"));
     ///
     /// process_request(); // Will log with both request_id and processing_time_ms
     /// ```
-    pub fn add_record(key: impl Into<Cow<'static, str>>, value: impl Into<LogValue>) {
+    pub fn add_local_field(key: impl Into<Cow<'static, str>>, value: impl Into<LogValue>) {
         SCOPE_STACK.with(|stack| {
             if let Some(mut top) = stack.top_mut() {
                 top.0.local.insert(key, value);
@@ -188,7 +188,7 @@ pub trait LogContextExt: Sized + crate::private::Sealed {
     /// use context_logger::{LogContext, LogContextExt as _};
     ///
     /// let result = LogContext::new()
-    ///     .with_local_record("request_id", "req-123")
+    ///     .with_local_field("request_id", "req-123")
     ///     .in_scope(|| 40 + 2);
     ///
     /// assert_eq!(result, 42);
@@ -214,14 +214,14 @@ mod tests {
 
     #[test]
     fn test_log_context_guard_enter() {
-        let context = LogContext::new().with_local_record("simple", 42);
+        let context = LogContext::new().with_local_field("simple", 42);
         // Make sure the context stack is empty before entering the context.
         assert_eq!(SCOPE_STACK.with(ScopeStack::is_empty), true);
 
         let guard = LogScope::enter(context);
-        // Check that the record was added to the top context.
+        // Check that the field was added to the top context.
         assert_eq!(
-            SCOPE_STACK.with(|stack| stack.top().unwrap().records().count()),
+            SCOPE_STACK.with(|stack| stack.top().unwrap().fields().count()),
             1
         );
 
@@ -232,12 +232,12 @@ mod tests {
 
     #[test]
     fn test_log_context_nested_guards() {
-        let outer_context = LogContext::new().with_local_record("simple_record", "outer_value");
+        let outer_context = LogContext::new().with_local_field("simple_record", "outer_value");
         assert_eq!(SCOPE_STACK.with(ScopeStack::len), 0);
 
         let outer_guard = LogScope::enter(outer_context);
         assert_eq!(
-            SCOPE_STACK.with(|stack| stack.top().unwrap().records().count()),
+            SCOPE_STACK.with(|stack| stack.top().unwrap().fields().count()),
             1
         );
 
@@ -249,7 +249,7 @@ mod tests {
             );
         });
 
-        let inner_context = LogContext::new().with_local_record("simple_record", "inner_value");
+        let inner_context = LogContext::new().with_local_field("simple_record", "inner_value");
         {
             let inner_guard = LogScope::enter(inner_context);
             // Test log context after inner guard is entered.
@@ -266,7 +266,7 @@ mod tests {
         }
         // Test log context after inner guard is dropped.
         assert_eq!(
-            SCOPE_STACK.with(|stack| stack.top().unwrap().records().count()),
+            SCOPE_STACK.with(|stack| stack.top().unwrap().fields().count()),
             1
         );
         SCOPE_STACK.with(|stack| {
@@ -283,12 +283,11 @@ mod tests {
 
     #[test]
     fn test_log_context_multithread() {
-        let local_context = LogContext::new().with_local_record("simple_record", "main");
+        let local_context = LogContext::new().with_local_field("simple_record", "main");
         let local_guard = LogScope::enter(local_context);
 
         let first_thread_handle = std::thread::spawn(|| {
-            let inner_context =
-                LogContext::new().with_local_record("simple_record", "first_thread");
+            let inner_context = LogContext::new().with_local_field("simple_record", "first_thread");
             let inner_guard = LogScope::enter(inner_context);
 
             // Test log context after inner guard is entered.
@@ -305,7 +304,7 @@ mod tests {
         });
         let second_thread_handle = std::thread::spawn(|| {
             let inner_context =
-                LogContext::new().with_local_record("simple_record", "second_thread");
+                LogContext::new().with_local_field("simple_record", "second_thread");
             let inner_guard = LogScope::enter(inner_context);
 
             // Test log context after inner guard is entered.
@@ -339,7 +338,7 @@ mod tests {
 
     #[test]
     fn test_current_context_with_scope() {
-        let context = LogContext::new().with_local_record("record", 42);
+        let context = LogContext::new().with_local_field("record", 42);
         {
             let _guard = LogScope::enter(context);
 
@@ -354,7 +353,7 @@ mod tests {
     fn test_in_scope_enters_context_and_returns_result() {
         assert!(SCOPE_STACK.with(ScopeStack::is_empty));
 
-        let result = LogScope::in_scope(LogContext::new().with_local_record("record", 42), || {
+        let result = LogScope::in_scope(LogContext::new().with_local_field("record", 42), || {
             let current_context = LogScope::current_context();
             assert_eq!(current_context.local["record"].to_string(), "42");
 
@@ -370,7 +369,7 @@ mod tests {
         assert!(SCOPE_STACK.with(ScopeStack::is_empty));
 
         let result = LogContext::new()
-            .with_local_record("record", 42)
+            .with_local_field("record", 42)
             .in_scope(|| {
                 let current_context = LogScope::current_context();
                 assert_eq!(current_context.local["record"].to_string(), "42");
@@ -385,9 +384,9 @@ mod tests {
     #[test]
     fn test_log_context_inherited_records() {
         LogContext::new()
-            .with_local_record("name", "Ann")
-            .with_inherited_record("tag", "42")
-            .with_inherited_record("target", "root")
+            .with_local_field("name", "Ann")
+            .with_inherited_field("tag", "42")
+            .with_inherited_field("target", "root")
             .in_scope(|| {
                 let ctx = LogScope::current_context();
 
@@ -396,7 +395,7 @@ mod tests {
                 assert_eq!(ctx.inherited["target"].to_string(), "root");
 
                 LogContext::new()
-                    .with_local_record("target", "nested")
+                    .with_local_field("target", "nested")
                     .in_scope(|| {
                         let ctx = LogScope::current_context();
 
@@ -412,8 +411,8 @@ mod tests {
     fn test_panic_in_child_scope_does_not_break_parent() {
         // Push parent frame onto the stack
         let outer_context = LogContext::new()
-            .with_inherited_record("outer", "val")
-            .with_local_record("outer_local", "ol");
+            .with_inherited_field("outer", "val")
+            .with_local_field("outer_local", "ol");
         {
             let _parent_guard = LogScope::enter(outer_context);
             // Verify parent is on the stack
@@ -435,8 +434,8 @@ mod tests {
     #[test]
     fn test_sibling_scopes_get_independent_inherited_copies() {
         let parent_ctx = LogContext::new()
-            .with_inherited_record("parent_key", "pv")
-            .with_local_record("parent_local", "pl");
+            .with_inherited_field("parent_key", "pv")
+            .with_local_field("parent_local", "pl");
 
         {
             let _g1 = LogScope::enter(parent_ctx);
@@ -444,8 +443,8 @@ mod tests {
 
             // child1: inherits parent's `parent_key`, adds its own `sibling` and local
             let child1_result = LogContext::new()
-                .with_inherited_record("sibling", "child1")
-                .with_local_record("only_in_child1", "c1")
+                .with_inherited_field("sibling", "child1")
+                .with_local_field("only_in_child1", "c1")
                 .in_scope(|| {
                     let c = LogScope::current_context();
                     format!(
@@ -460,8 +459,8 @@ mod tests {
 
             // child2: also inherits parent's `parent_key`, but its own `sibling` wins
             let c2_result = LogContext::new()
-                .with_inherited_record("sibling", "child2")
-                .with_local_record("only_in_child2", "c2")
+                .with_inherited_field("sibling", "child2")
+                .with_local_field("only_in_child2", "c2")
                 .in_scope(|| {
                     let c = LogScope::current_context();
                     format!("{}|{}", c.inherited["parent_key"], c.inherited["sibling"])

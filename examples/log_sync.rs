@@ -14,7 +14,7 @@ fn try_init_logger() -> Result<(), Box<dyn std::error::Error>> {
     let level = env_logger.filter();
 
     ContextLogger::new(env_logger)
-        .with_default_record("instance", "contexted_log_sync")
+        .with_default_field("instance", "contexted_log_sync")
         .try_init(level)?;
 
     Ok(())
@@ -29,15 +29,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     {
         let _guard = LogScope::enter(
             LogContext::new()
-                .with_inherited_record("example", "sync")
-                .with_local_record("user_id", "12345"),
+                .with_inherited_field("example", "sync")
+                .with_local_field("user_id", "12345"),
         );
 
         log::info!("Logging in");
 
         // Create a nested context with additional properties
         {
-            let context = LogContext::new().with_local_record(
+            let context = LogContext::new().with_local_field(
                 "action",
                 LogValue::serde(Operation {
                     action: "login".to_string(),

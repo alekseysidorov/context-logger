@@ -2,15 +2,15 @@
 
 use std::borrow::Cow;
 
-use crate::{LogValue, records::LogRecords};
+use crate::{LogValue, fields::LogFields};
 
-/// A set of records that can be attached to a logging scope.
+/// A set of fields that can be attached to a logging scope.
 ///
-/// Records are split into two categories:
+/// Fields are split into two categories:
 ///
-/// - **local** - records belonging only to the current scope.
+/// - **local** - fields belonging only to the current scope.
 ///   They do not propagate to child scopes.
-/// - **inherited** - records that automatically flow into all child scopes created within the current scope.
+/// - **inherited** - fields that automatically flow into all child scopes created within the current scope.
 ///
 /// Nested scopes resolution rules:
 ///
@@ -18,10 +18,10 @@ use crate::{LogValue, records::LogRecords};
 /// - inherited are emitted before local, so "last write wins" consumers see local shadowing
 #[derive(Debug, Default, Clone)]
 pub struct LogContext {
-    /// Records belonging only to the current scope.
-    pub local: LogRecords,
-    /// Records that automatically flow into all child scopes created within the current scope.
-    pub inherited: LogRecords,
+    /// Fields belonging only to the current scope.
+    pub local: LogFields,
+    /// Fields that automatically flow into all child scopes created within the current scope.
+    pub inherited: LogFields,
 }
 
 impl LogContext {
@@ -31,33 +31,33 @@ impl LogContext {
         Self::default()
     }
 
-    /// Adds a key-value record to the local records of this context.
+    /// Adds a key-value field to the local fields of this context.
     ///
-    /// See [`LogRecords`] for more details about log records.
+    /// See [`LogFields`] for more details about log fields.
     #[must_use]
-    pub fn with_local_record(
+    pub fn with_local_field(
         mut self,
         key: impl Into<Cow<'static, str>>,
         value: impl Into<LogValue>,
     ) -> Self {
-        self.local = self.local.with_record(key, value);
+        self.local = self.local.with(key, value);
         self
     }
 
-    /// Adds a key-value record to the inherited records of this context.
+    /// Adds a key-value pair to the inherited fields of this context.
     ///
-    /// See [`LogRecords`] for more details about log records.
+    /// See [`LogFields`] for more details about log fields.
     #[must_use]
-    pub fn with_inherited_record(
+    pub fn with_inherited_field(
         mut self,
         key: impl Into<Cow<'static, str>>,
         value: impl Into<LogValue>,
     ) -> Self {
-        self.inherited = self.inherited.with_record(key, value);
+        self.inherited = self.inherited.with(key, value);
         self
     }
 
-    /// Returns `true` if both local and inherited records are empty.
+    /// Returns `true` if both local and inherited fields are empty.
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.local.is_empty() && self.inherited.is_empty()

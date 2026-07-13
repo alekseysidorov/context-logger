@@ -13,9 +13,9 @@ fn test_default() {
     check_logger_once(
         |logger| {
             logger
-                .with_default_record("tag", 42)
-                .with_default_record_fn("my_log_level", |log_record| log_record.level().to_string())
-                .with_default_record_fn("thread_name", |_| {
+                .with_default_field("tag", 42)
+                .with_default_field_fn("my_log_level", |log_record| log_record.level().to_string())
+                .with_default_field_fn("thread_name", |_| {
                     LogValue::serde(std::thread::current().name().map(ToOwned::to_owned))
                 })
         },

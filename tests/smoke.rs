@@ -18,6 +18,6 @@ fn test_smoke() {
         },
     );
 
-    let _guard = LogScope::enter(LogContext::new().with_local_record("answer", 42));
+    let _guard = LogScope::enter(LogContext::new().with_local_field("answer", 42));
     log::info!("Smoke on the water, fire in the sky");
 }
