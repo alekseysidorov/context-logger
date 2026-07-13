@@ -3,7 +3,7 @@
 
 use context_logger::{LogContext, LogContextExt};
 
-use crate::common::{RecordExt, check_logger_once};
+use crate::common::{LogRecordExt as _, check_logger_once};
 
 pub mod common;
 
@@ -11,11 +11,11 @@ pub mod common;
 fn test_inherited_records_shadowing() {
     check_logger_once(
         |logger| logger,
-        |entry| {
-            assert_eq!(entry.get_record("answer").unwrap(), 42);
-            assert_eq!(entry.get_record("name").unwrap(), "Robin");
-            assert_eq!(entry.get_record("shadow").unwrap(), true);
-            assert_eq!(entry.get_record("inherited_shadow").unwrap(), "child");
+        |record| {
+            assert_eq!(record.get_field("answer").unwrap(), 42);
+            assert_eq!(record.get_field("name").unwrap(), "Robin");
+            assert_eq!(record.get_field("shadow").unwrap(), true);
+            assert_eq!(record.get_field("inherited_shadow").unwrap(), "child");
             Ok(())
         },
     );

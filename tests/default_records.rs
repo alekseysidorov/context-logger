@@ -4,7 +4,7 @@
 use context_logger::LogValue;
 use pretty_assertions::assert_eq;
 
-use crate::common::{RecordExt, check_logger_once};
+use crate::common::{LogRecordExt, check_logger_once};
 
 pub mod common;
 
@@ -20,9 +20,9 @@ fn test_default() {
                 })
         },
         |entry| {
-            assert_eq!(entry.get_record("tag").unwrap(), 42);
-            assert_eq!(entry.get_record("my_log_level").unwrap(), "INFO");
-            assert_eq!(entry.get_record("thread_name").unwrap(), "test_default");
+            assert_eq!(entry.get_field("tag").unwrap(), 42);
+            assert_eq!(entry.get_field("my_log_level").unwrap(), "INFO");
+            assert_eq!(entry.get_field("thread_name").unwrap(), "test_default");
             Ok(())
         },
     );

@@ -3,7 +3,7 @@
 
 use context_logger::{LogContext, LogScope};
 
-use crate::common::{RecordExt, check_logger_once};
+use crate::common::{LogRecordExt as _, check_logger_once};
 
 pub mod common;
 
@@ -12,7 +12,7 @@ fn test_smoke() {
     check_logger_once(
         |logger| logger,
         |entry| {
-            let val = entry.get_record("answer").unwrap();
+            let val = entry.get_field("answer").unwrap();
             assert_eq!(val, 42);
             Ok(())
         },
