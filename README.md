@@ -58,6 +58,10 @@ This keeps the two concerns separate:
 Together they cover structured logs and distributed traces without requiring all
 logging to go through the `tracing` instrumentation model.
 
+## Example output
+
+![Example output](docs/example-output.png)
+
 ## Usage
 
 ### Basic Example
