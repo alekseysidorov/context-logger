@@ -60,7 +60,37 @@ logging to go through the `tracing` instrumentation model.
 
 ## Example output
 
-![Example output](docs/example-output.png)
+```bash
+cargo run --example log_async | jq
+{
+  "instance": "contexted_log_async",
+  "level": "INFO",
+  "message": "Initialized context logger",
+  "target": "log_async",
+  "timestamp": 1784151962445
+}
+{
+  "instance": "contexted_log_async",
+  "level": "INFO",
+  "message": "Logging in",
+  "target": "log_async",
+  "thread_name": "first_future",
+  "timestamp": 1784151962445,
+  "user_id": "12345"
+}
+{
+  "action": {
+    "action": "login",
+    "name": "user"
+  },
+  "instance": "contexted_log_async",
+  "level": "INFO",
+  "message": "User logged in successfully",
+  "target": "log_async",
+  "thread_name": "first_future",
+  "timestamp": 1784151962445
+}
+```
 
 ## Usage
 
