@@ -8,8 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
-- Updated terminology: renamed "log record" to "log field" to avoid confusion
-  with `log::Record`
+- Updated terminology: renamed structured context records to fields to avoid
+  confusion with `log::Record`.
 - Introduced a new method `ContextLogger::with_default_field_fn` that allows
   injecting custom default fields based on log record metadata, enabling more
   flexible and dynamic logging contexts.
