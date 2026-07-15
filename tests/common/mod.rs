@@ -1,12 +1,12 @@
 use context_logger::ContextLogger;
 use log::{LevelFilter, Record, kv::Key};
 
-pub trait RecordExt {
-    fn get_record(&self, key: &str) -> Option<serde_json::Value>;
+pub trait LogRecordExt {
+    fn get_field(&self, key: &str) -> Option<serde_json::Value>;
 }
 
-impl RecordExt for Record<'_> {
-    fn get_record(&self, key: &str) -> Option<serde_json::Value> {
+impl LogRecordExt for Record<'_> {
+    fn get_field(&self, key: &str) -> Option<serde_json::Value> {
         let key = Key::from_str(key);
         let val = self.key_values().get(key)?;
         serde_json::to_value(val).ok()

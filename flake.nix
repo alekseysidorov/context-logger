@@ -54,13 +54,14 @@
             msrv = (fenixPackage.fromToolchainName rustVersions.msrv).defaultToolchain;
             nightly = fenixPackage.complete.withComponents [ "rustfmt" ];
           };
-          # Common runtime inputs used in this project.
-          runtimeInputs = [
-            rustToolchains.stable
-          ];
+
           # Import rust dev flake
           rustDev = rust-dev-flake.lib.mkRustDevHelpers {
-            inherit system self runtimeInputs;
+            inherit system self;
+            # Common runtime inputs used in this project.
+            runtimeInputs = [
+              rustToolchains.stable
+            ];
             toolchain = rustToolchains.msrv;
           };
         in
@@ -92,21 +93,29 @@
             doc = rustDev.mkCargoCheck "doc" "--workspace --all-features --no-deps";
             doctest = rustDev.mkCargoCheck "test" "--doc --workspace --all-features";
           };
-          # for `nix develop` and direnv
-          devShells.default = pkgs.mkShell {
-            nativeBuildInputs =
-              with pkgs;
-              [
-                marksman
-                typos-lsp
-                crates-lsp
-                yaml-language-server
-                nil
-                nixd
-                tombi
-              ]
-              ++ runtimeInputs;
+          devShells = {
+            # for `nix develop` and direnv
+            default = pkgs.mkShell {
+              nativeBuildInputs = [
+                rustToolchains.stable
+
+                pkgs.marksman
+                pkgs.typos-lsp
+                pkgs.crates-lsp
+                pkgs.yaml-language-server
+                pkgs.nil
+                pkgs.nixd
+                pkgs.tombi
+              ];
+            };
+            # for nightly rust
+            nightly = pkgs.mkShell {
+              nativeBuildInputs = [
+                rustToolchains.nightly
+              ];
+            };
           };
+
           # for `nix run`
           packages = (rustDev.mkCheckPackages self.checks.${system}) // {
             inherit (rustDev.runtimeChecks)

@@ -5,7 +5,7 @@
 
 use std::cell::{Ref, RefCell, RefMut};
 
-use crate::{LogContext, records::LogRecordRef};
+use crate::{LogContext, fields::LogFieldRef};
 
 thread_local! {
     /// Thread-local stack for maintaining log scopes.
@@ -32,12 +32,12 @@ impl ScopeFrame {
         Self(LogContext::new())
     }
 
-    /// Returns an iterator over all records in this scope frame.
+    /// Returns an iterator over all log fields in this scope frame.
     ///
-    /// Inherited records come first, followed by local records. This allows local
-    /// records to shadow inherited ones when a consumer resolves duplicate keys
+    /// Inherited fields come first, followed by local fields. This allows local
+    /// fields to shadow inherited ones when a consumer resolves duplicate keys
     /// using "last write wins" semantics.
-    pub fn records(&self) -> impl Iterator<Item = LogRecordRef<'_>> + Clone {
+    pub fn fields(&self) -> impl Iterator<Item = LogFieldRef<'_>> + Clone {
         self.0.inherited.iter().chain(self.0.local.iter())
     }
 }
@@ -62,15 +62,15 @@ impl ScopeStack {
         }
     }
 
-    /// Pushes a new scope frame onto the stack, merging inherited records from
-    /// the current top frame into the new context's inherited records.
+    /// Pushes a new scope frame onto the stack, merging inherited fields from
+    /// the current top frame into the new context's inherited fields.
     ///
     /// # Panics
     ///
     /// If the stack is already borrowed.
     pub fn push(&self, mut context: LogContext) {
-        // Merge inherited records from the parent frame into the child context.
-        // Parent inherited records are applied first, then child inherited records
+        // Merge inherited fields from the parent frame into the child context.
+        // Parent inherited fields are applied first, then child inherited fields
         // so child scopes can shadow inherited keys from their parent.
         let mut inherited = self
             .top()
@@ -144,22 +144,22 @@ mod tests {
     use std::collections::HashMap;
 
     use super::*;
-    use crate::LogRecords;
+    use crate::LogFields;
 
-    fn record_to_string(record: LogRecordRef<'_>) -> (&str, String) {
-        (record.0.as_ref(), record.1.to_string())
+    fn field_to_string(entry: LogFieldRef<'_>) -> (&str, String) {
+        (entry.0.as_ref(), entry.1.to_string())
     }
 
     #[test]
-    fn test_scope_frame_records_with_inherited() {
+    fn test_scope_frame_fields_with_inherited() {
         let frame = ScopeFrame(LogContext {
-            local: LogRecords::new().with_record("name", "bob"),
-            inherited: LogRecords::new().with_record("tag", 42),
+            local: LogFields::new().with("name", "bob"),
+            inherited: LogFields::new().with("tag", 42),
         });
 
-        let records: HashMap<_, _> = frame.records().map(record_to_string).collect();
+        let fields: HashMap<_, _> = frame.fields().map(field_to_string).collect();
 
-        assert_eq!(records.len(), 2);
-        assert_eq!(records["tag"], "42");
+        assert_eq!(fields.len(), 2);
+        assert_eq!(fields["tag"], "42");
     }
 }

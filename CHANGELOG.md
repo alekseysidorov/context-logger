@@ -8,18 +8,20 @@ and this project adheres to
 
 ## [Unreleased]
 
-- Introduced a new method `ContextLogger::with_default_record_fn` that allows
-  injecting custom default records based on log record metadata, enabling more
+- Updated terminology: renamed structured context records to fields to avoid
+  confusion with `log::Record`.
+- Introduced a new method `ContextLogger::with_default_field_fn` that allows
+  injecting custom default fields based on log record metadata, enabling more
   flexible and dynamic logging contexts.
-- _breaking_ Introduced inherited context records
-  - `LogContext` now stores two separate sets of records (`local` and
+- _breaking_ Introduced inherited context fields
+  - `LogContext` now stores two separate sets of fields (`local` and
     `inherited`), each with its own propagation semantics:
-    - `with_local_record(key, value)` — record is visible only in the current
-      scope; overrides inherited records with the same key in child scopes
-    - `with_inherited_record(key, value)` — record propagates to child scopes;
-      child local records take priority over inherited ones
-  - Introduced `LogRecords` as a dedicated key-value collection for structured
-    log entries.
+    - `with_local_field(key, value)` — field is visible only in the current
+      scope; overrides inherited fields with the same key in child scopes
+    - `with_inherited_field(key, value)` — field propagates to child scopes;
+      child local fields take priority over inherited ones
+  - Introduced `LogFields` as a dedicated key-value collection for structured
+    log fields.
   - `LogContext::new` is no longer constant
 - Added `LogScope::in_scope` — runs synchronous closures within a temporary
   logging scope and exits it automatically.
@@ -28,14 +30,12 @@ and this project adheres to
 - Added `LogScope::current_context` — captures and clones the currently active
   logging context so it can be propagated to spawned threads and async tasks.
   See the new example [`current_context`](examples/current_context.rs).
-- _breaking_ Renamed `LogContext::record` to `LogContext::with_record` to follow
-  the standard Rust builder pattern naming convention
 - _breaking_ Replaced `LogContext::enter` instance method with the
   `LogScope::enter(context)` static method; `LogScope` is now the explicit guard
   type that keeps the context active and removes it from the stack on drop
-- _breaking_ Moved `LogContext::add_record` to `LogScope::add_record`; dynamic
-  record insertion is now clearly associated with the active scope rather than
-  the context builder
+- _breaking_ Moved `LogContext::add_record` to `LogScope::add_local_field`;
+  dynamic field insertion is now clearly associated with the active scope rather
+  than the context builder
 - _breaking_ Renamed `LogContextGuard` to `LogScope` in the public API
 - _breaking_ Renamed `ContextValue` to `LogValue` to better reflect its role in
   structured logging

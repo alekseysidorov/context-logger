@@ -9,7 +9,7 @@ fn try_init_logger() -> Result<(), Box<dyn std::error::Error>> {
         .with_target_writer("*", structured_logger::json::new_writer(std::io::stdout()))
         .build();
     ContextLogger::new(logger)
-        .with_default_record("instance", "contexted_log_async")
+        .with_default_field("instance", "contexted_log_async")
         .try_init(level)?;
 
     Ok(())
@@ -23,8 +23,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create a new context with properties.
     let log_context = LogContext::new()
-        .with_local_record("user_id", "12345")
-        .with_inherited_record("global_record", "example");
+        .with_local_field("user_id", "12345")
+        .with_inherited_field("global_record", "example");
 
     count_with_tokio_spawn(7).in_log_context(log_context).await;
 

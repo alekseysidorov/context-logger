@@ -10,12 +10,13 @@ use crate::{LogContext, scope::LogScope};
 ///
 /// This trait adds ability to attach a [`LogContext`] for any [`Future`],
 /// ensuring that logs emitted during the future's execution will include
-/// the contextual properties even if the future is polled across different threads.
+/// the contextual properties even if the future is polled across different
+/// threads.
 pub trait FutureExt: Sized + crate::private::Sealed {
     /// Attaches a log context to this future.
     ///
-    /// The attached [context](LogContext) will be activated every time the instrumented
-    /// future is polled.
+    /// The attached [context](LogContext) will be activated every time the
+    /// instrumented future is polled.
     ///
     /// # Examples
     ///
@@ -26,8 +27,8 @@ pub trait FutureExt: Sized + crate::private::Sealed {
     /// async fn process_user_data(user_id: u64) {
     ///     // Create a context with user information
     ///     let context = LogContext::new()
-    ///         .with_local_record("user_id", user_id)
-    ///         .with_local_record("operation", "process_data");
+    ///         .with_local_field("user_id", user_id)
+    ///         .with_local_field("operation", "process_data");
     ///
     ///     async {
     ///         info!("Starting user data processing"); // Will include context
@@ -61,7 +62,8 @@ where
 ///
 /// # Note
 ///
-/// If the wrapped future will panic, the next `poll` invocation will panic unconditionally.
+/// If the wrapped future will panic, the next `poll` invocation will panic
+/// unconditionally.
 #[pin_project]
 #[derive(Debug)]
 pub struct LogContextFuture<F> {
@@ -110,7 +112,7 @@ mod tests {
     }
 
     async fn check_nested_different_contexts(answer: u32) {
-        let context = LogContext::new().with_local_record("answer", answer);
+        let context = LogContext::new().with_local_field("answer", answer);
 
         async {
             tokio::task::yield_now().await;
@@ -119,7 +121,7 @@ mod tests {
                 tokio::task::yield_now().await;
                 assert_eq!(find_local_value("answer"), Some("None".to_string()));
             }
-            .in_log_context(LogContext::new().with_local_record("answer", LogValue::null()))
+            .in_log_context(LogContext::new().with_local_field("answer", LogValue::null()))
             .await;
 
             tokio::task::yield_now().await;
@@ -133,7 +135,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_future_with_context() {
-        let context = LogContext::new().with_local_record("answer", 42);
+        let context = LogContext::new().with_local_field("answer", 42);
 
         async {
             tokio::task::yield_now().await;
@@ -147,7 +149,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_panicked_future() {
-        let context = LogContext::new().with_local_record("answer", 42);
+        let context = LogContext::new().with_local_field("answer", 42);
 
         AssertUnwindSafe(
             async {
@@ -165,7 +167,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_nested_future_with_common_context() {
-        let context = LogContext::new().with_local_record("answer", 42);
+        let context = LogContext::new().with_local_field("answer", 42);
 
         async {
             tokio::task::yield_now().await;

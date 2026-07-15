@@ -4,7 +4,7 @@
 use context_logger::LogValue;
 use pretty_assertions::assert_eq;
 
-use crate::common::{RecordExt, check_logger_once};
+use crate::common::{LogRecordExt, check_logger_once};
 
 pub mod common;
 
@@ -13,16 +13,16 @@ fn test_default() {
     check_logger_once(
         |logger| {
             logger
-                .with_default_record("tag", 42)
-                .with_default_record_fn("my_log_level", |log_record| log_record.level().to_string())
-                .with_default_record_fn("thread_name", |_| {
+                .with_default_field("tag", 42)
+                .with_default_field_fn("my_log_level", |log_record| log_record.level().to_string())
+                .with_default_field_fn("thread_name", |_| {
                     LogValue::serde(std::thread::current().name().map(ToOwned::to_owned))
                 })
         },
         |entry| {
-            assert_eq!(entry.get_record("tag").unwrap(), 42);
-            assert_eq!(entry.get_record("my_log_level").unwrap(), "INFO");
-            assert_eq!(entry.get_record("thread_name").unwrap(), "test_default");
+            assert_eq!(entry.get_field("tag").unwrap(), 42);
+            assert_eq!(entry.get_field("my_log_level").unwrap(), "INFO");
+            assert_eq!(entry.get_field("thread_name").unwrap(), "test_default");
             Ok(())
         },
     );

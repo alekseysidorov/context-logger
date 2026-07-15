@@ -58,6 +58,40 @@ This keeps the two concerns separate:
 Together they cover structured logs and distributed traces without requiring all
 logging to go through the `tracing` instrumentation model.
 
+## Example output
+
+```bash
+cargo run --example log_async | jq
+{
+  "instance": "contexted_log_async",
+  "level": "INFO",
+  "message": "Initialized context logger",
+  "target": "log_async",
+  "timestamp": 1784151962445
+}
+{
+  "instance": "contexted_log_async",
+  "level": "INFO",
+  "message": "Logging in",
+  "target": "log_async",
+  "thread_name": "first_future",
+  "timestamp": 1784151962445,
+  "user_id": "12345"
+}
+{
+  "action": {
+    "action": "login",
+    "name": "user"
+  },
+  "instance": "contexted_log_async",
+  "level": "INFO",
+  "message": "User logged in successfully",
+  "target": "log_async",
+  "thread_name": "first_future",
+  "timestamp": 1784151962445
+}
+```
+
 ## Usage
 
 ### Basic Example
@@ -88,22 +122,22 @@ fn main() {
     let filter = env_logger.filter();
     // Wrap it with ContextLogger to enable context propagation.
     let logger = ContextLogger::new(env_logger)
-        // Add static default records (static fields).
-        .with_default_record("service", "api")
-        // Add computed default records (per-event fields).
-        .with_default_record_fn("timestamp", |_log_record| {
+         // Add static default field (static field).
+         .with_default_field("service", "api")
+         // Add dynamic default field (per-event field).
+         .with_default_field_fn("timestamp", |log_record| {
             chrono::Utc::now().to_rfc3339()
-        })
-        .with_default_record_fn("level", |record| record.level().to_string());
+         })
+         .with_default_field_fn("level", |log_record| log_record.level().to_string());
     // Initialize the resulting logger.
     logger.init(filter);
 
     // Create a context with properties.
     let context = LogContext::new()
-        // Record that will be inherited by child contexts.
-        .with_inherited_record("request_id", "req-123")
-        .with_inherited_record("user_id", 42)
-        .with_local_record("http_method", "GET");
+         // Field that will be inherited by child contexts.
+         .with_inherited_field("request_id", "req-123")
+         .with_inherited_field("user_id", 42)
+         .with_local_field("http_method", "GET");
 
     // Use the context.
     context.in_scope(|| {
@@ -129,7 +163,7 @@ use log::info;
 
 async fn process_user_data(user_id: &str) {
     let context = LogContext::new()
-        .with_inherited_record("user_id", user_id);
+         .with_inherited_field("user_id", user_id);
 
     async {
         info!("Processing user data"); // Includes user_id
@@ -142,14 +176,14 @@ async fn process_user_data(user_id: &str) {
 }
 
 async fn fetch_user_preferences() {
-    // Add additional record for this operation.
-    LogScope::add_record("operation", "fetch_preferences");
+     // Add additional field for this operation.
+    LogScope::add_local_field("operation", "fetch_preferences");
     info!("Fetching preferences"); // Includes both user_id and operation
 }
 
 async fn spawn_background_job(user_id: &str) {
     let context = LogContext::new()
-        .with_inherited_record("user_id", user_id);
+         .with_inherited_field("user_id", user_id);
 
     async {
         // The scope stack is thread-local: capture the active context
