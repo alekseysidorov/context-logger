@@ -8,7 +8,7 @@ use crate::common::{LogRecordExt as _, check_logger_once};
 pub mod common;
 
 #[test]
-fn test_inherited_records_shadowing() {
+fn test_inherited_fields_shadowing() {
     check_logger_once(
         |logger| logger,
         |record| {

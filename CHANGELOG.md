@@ -8,6 +8,8 @@ and this project adheres to
 
 ## [Unreleased]
 
+## [0.2.0] - 2026.07.29
+
 - Updated terminology: renamed structured context records to fields to avoid
   confusion with `log::Record`.
 - Introduced a new method `ContextLogger::with_default_field_fn` that allows

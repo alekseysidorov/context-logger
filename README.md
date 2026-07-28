@@ -67,15 +67,16 @@ cargo run --example log_async | jq
   "level": "INFO",
   "message": "Initialized context logger",
   "target": "log_async",
-  "timestamp": 1784151962445
+  "timestamp": 1785281435984
 }
 {
+  "http_method": "POST",
   "instance": "contexted_log_async",
   "level": "INFO",
   "message": "Logging in",
   "target": "log_async",
   "thread_name": "first_future",
-  "timestamp": 1784151962445,
+  "timestamp": 1785281435984,
   "user_id": "12345"
 }
 {
@@ -88,7 +89,8 @@ cargo run --example log_async | jq
   "message": "User logged in successfully",
   "target": "log_async",
   "thread_name": "first_future",
-  "timestamp": 1784151962445
+  "timestamp": 1785281435984,
+  "user_id": "12345"
 }
 ```
 
