@@ -11,8 +11,10 @@
 //! 3. Inherited fields from all parent scopes
 //! 4. Local fields of the active scope
 //!
-//! These fields are merged into the [`log::Record`]'s key-value store — "last
-//! write wins" for duplicate keys.
+//! *These fields are merged into the [`log::Record`]'s key-value store. The
+//! exact behavior for duplicate keys depends on the underlying logger
+//! implementation — in most implementations, later fields with the same key
+//! replace earlier ones.*
 //!
 //! ## Concepts
 //!
