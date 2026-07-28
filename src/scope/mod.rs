@@ -389,7 +389,7 @@ mod tests {
     }
 
     #[test]
-    fn test_log_context_inherited_records() {
+    fn test_log_context_inherited_fields() {
         LogContext::new()
             .with_local_field("name", "Ann")
             .with_inherited_field("tag", "42")

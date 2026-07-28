@@ -29,9 +29,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     log::info!("Initialized context logger");
 
     // Create a new context with properties.
+    // `user_id` and `thread_name` are inherited so they stay visible across
+    // nested scopes and `.await` points; `http_method` is local because it
+    // only describes this operation.
     let log_context = LogContext::new()
         .with_inherited_field("thread_name", "first_future")
-        .with_local_field("user_id", "12345");
+        .with_inherited_field("user_id", "12345")
+        .with_local_field("http_method", "POST");
     let first_future = async move {
         log::info!("Logging in");
         // Create a nested context with additional properties
