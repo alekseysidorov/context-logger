@@ -137,7 +137,7 @@ checksum = "1d07550c9036bf2ae0c684c4297d503f838287c83c53686d05370d0e139ae570"
 
 [[package]]
 name = "context-logger"
-version = "0.2.0-rc.1"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "env_logger",
