@@ -173,11 +173,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1788178788,
-        "narHash": "sha256-v+/X63R1YJPcVsbLpDRvfNnCGORyGluqrpQ6jrTU+X4=",
+        "lastModified": 1788179908,
+        "narHash": "sha256-Og1vMLy6vRSliWzps8J/u4chYTX5Nyk4dRsfRr3X5sY=",
         "owner": "alekseysidorov",
         "repo": "rust-dev-flake",
-        "rev": "6ae4d7aad67dbf433337bee2990b9f724db2e4b0",
+        "rev": "01948c4df95e70afc1df25944503c8b3fbd3935a",
         "type": "github"
       },
       "original": {

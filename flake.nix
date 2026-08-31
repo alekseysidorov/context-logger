@@ -66,6 +66,10 @@
           # Import rust dev flake
           rustDev = pkgs.rustDev.mkRustDevHelpers {
             inherit self;
+            # Exclude gitignored files without dropping non-Rust build and test assets.
+            projectRoot = pkgs.projectSource {
+              projectRoot = self;
+            };
             # Common runtime inputs used in this project.
             runtimeInputs = [
               rustToolchains.stable
