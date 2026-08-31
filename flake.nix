@@ -11,6 +11,7 @@
     rust-dev-flake = {
       url = "github:alekseysidorov/rust-dev-flake";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-parts.follows = "flake-parts";
       inputs.treefmt-nix.follows = "treefmt-nix";
     };
     treefmt-nix.url = "github:numtide/treefmt-nix";
