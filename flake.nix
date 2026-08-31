@@ -1,10 +1,19 @@
 {
   inputs = {
+    # Nix
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
-    fenix.url = "github:nix-community/fenix/monthly";
-    treefmt-nix.url = "github:numtide/treefmt-nix";
     flake-parts.url = "github:hercules-ci/flake-parts";
-    rust-dev-flake.url = "github:alekseysidorov/rust-dev-flake";
+
+    # Build
+    fenix.url = "github:nix-community/fenix/monthly";
+
+    # Development
+    rust-dev-flake = {
+      url = "github:alekseysidorov/rust-dev-flake";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.treefmt-nix.follows = "treefmt-nix";
+    };
+    treefmt-nix.url = "github:numtide/treefmt-nix";
   };
 
   outputs =
@@ -18,22 +27,20 @@
     }@inputs:
     flake-parts.lib.mkFlake { inherit inputs; } {
       # Declared systems that your flake supports. These will be enumerated in perSystem
-      systems = [
-        "x86_64-linux"
-        "aarch64-linux"
-        "riscv64-linux"
-        "aarch64-darwin"
-      ];
-
+      systems = inputs.nixpkgs.lib.systems.flakeExposed;
       imports = [
         treefmt-nix.flakeModule
+        rust-dev-flake.flakeModules.gitHooks
       ];
 
       perSystem =
         { system, ... }:
         let
           # Common nix packages
-          pkgs = nixpkgs.legacyPackages.${system};
+          pkgs = import nixpkgs {
+            inherit system;
+            overlays = [ rust-dev-flake.overlays.default ];
+          };
           # Fenix Rust toolchains
           fenixPackage = fenix.packages.${system};
           # Minimum supported Rust version
@@ -56,8 +63,8 @@
           };
 
           # Import rust dev flake
-          rustDev = rust-dev-flake.lib.mkRustDevHelpers {
-            inherit system self;
+          rustDev = pkgs.rustDev.mkRustDevHelpers {
+            inherit self;
             # Common runtime inputs used in this project.
             runtimeInputs = [
               rustToolchains.stable
@@ -67,7 +74,7 @@
         in
         {
           # Use the modified pkgs with overlays for all modules and packages in this system.
-          _module.args = pkgs;
+          _module.args.pkgs = pkgs;
           # Setup nix formatting with treefmt-nix.
           treefmt = {
             # Project root marker used by treefmt
@@ -123,21 +130,22 @@
               check-cargo-publish
               ;
 
-            git-install-hooks = rustDev.mkGitHooks {
-              "pre-commit" = ''
-                echo "⚡️ Running pre-commit checks..."
-                nix build .#check-treefmt -L
-              '';
+          };
 
-              "pre-push" = ''
-                echo "⚡️ Running flake checks..."
-                nix flake check -L
-                echo "⚡️ Running semver checks..."
-                nix run .#check-cargo-semver -L
-                echo "⚡️ Running cargo publish compatibility checks..."
-                nix run .#check-cargo-publish -L
-              '';
-            };
+          # Install explicitly with `nix run .#install-git-hooks`.
+          gitHooks = {
+            pre-commit = pkgs.writeNuShellScript "pre-commit" ''
+              print "⚡️ Running pre-commit checks..."
+              nix build .#check-treefmt -L
+            '';
+            pre-push = pkgs.writeNuShellScript "pre-push" ''
+              print "⚡️ Running flake checks..."
+              nix flake check -L
+              print "⚡️ Running semver checks..."
+              nix run .#check-cargo-semver -L
+              print "⚡️ Running cargo publish compatibility checks..."
+              nix run .#check-cargo-publish -L
+            '';
           };
         };
     };
