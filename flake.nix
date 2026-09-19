@@ -12,6 +12,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-parts.follows = "flake-parts";
       inputs.treefmt-nix.follows = "treefmt-nix";
+      inputs.rust-advisory-db.follows = "rust-advisory-db";
     };
 
     rust-advisory-db = {
@@ -83,7 +84,7 @@
             in
             {
               packages = {
-                # Cargo package itself.
+                # Reuse the shared dependency artifacts and vendored sources when building the crate.
                 default = rustDev.craneLib.buildPackage {
                   inherit src;
                   strictDeps = true;
@@ -91,7 +92,8 @@
                   cargoArtifacts = rustDev.cargoArtifacts;
                 };
 
-                # Additional runtime checks.
+                # Keep registry-backed release checks runnable on demand, outside the default flake checks.
+                # Use the actual Cargo executable and preserve flags supplied to the wrapper.
                 check-cargo-semver = pkgs.writeNushellApplication {
                   name = "check-cargo-semver";
                   runtimeInputs = [
@@ -104,6 +106,7 @@
                     }
                   '';
                 };
+                # Validate packageability without releasing; --allow-dirty supports local iteration.
                 check-cargo-publish = pkgs.writeNushellApplication {
                   name = "check-cargo-publish";
                   runtimeInputs = [ rustToolchains.stable ];
@@ -115,6 +118,16 @@
                 };
               };
 
+              checks = {
+                # Keep the default-feature and all-feature test surfaces independently visible in CI.
+                test = rustDev.checks.nextest "--workspace --all-targets --no-default-features";
+                test-all-features = rustDev.checks.nextest "--workspace --all-targets --all-features";
+                clippy = rustDev.checks.clippy "--workspace --all-targets --all-features -- -D warnings";
+                doc = rustDev.checks.doc "--workspace --all-features --no-deps";
+                doctest = rustDev.checks.test "--doc --workspace --all-features";
+                audit = rustDev.checks.audit "";
+              };
+
               devShells.default = pkgs.mkShell {
                 packages = [
                   rustToolchains.stable
@@ -124,21 +137,13 @@
                 ];
               };
 
-              checks = {
-                test = rustDev.checks.nextest "--workspace --all-targets --no-default-features";
-                test-all-features = rustDev.checks.nextest "--workspace --all-targets --all-features";
-                clippy = rustDev.checks.clippy "--workspace --all-targets --all-features -- -D warnings";
-                doc = rustDev.checks.doc "--workspace --all-features --no-deps";
-                doctest = rustDev.checks.test "--doc --workspace --all-features";
-                audit = rustDev.checks.audit "";
-              };
-
               treefmt = {
                 projectRootFile = "flake.nix";
                 programs = {
                   nixfmt.enable = true;
                   rustfmt = {
                     enable = true;
+                    # Nightly is used only for rustfmt's unstable formatting options.
                     package = rustToolchains.nightly;
                   };
                   taplo.enable = true;
@@ -147,10 +152,12 @@
 
               # Install explicitly with `nix run .#install-git-hooks`.
               gitHooks = {
+                # Reject format drift rather than rewriting the checkout during a commit.
                 pre-commit = pkgs.writeNushellScript "pre-commit" ''
                   print "⚡️ Running pre-commit checks..."
                   nix fmt -- --fail-on-change
                 '';
+                # Run validation before pushing; the publish check below is deliberately a dry-run.
                 pre-push = pkgs.writeNushellScript "pre-push" ''
                   print "⚡️ Running flake checks..."
                   nix flake check -L
