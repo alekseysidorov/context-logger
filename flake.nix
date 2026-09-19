@@ -86,8 +86,6 @@
                 # Cargo package itself.
                 default = rustDev.craneLib.buildPackage {
                   inherit src;
-                  pname = "context-logger";
-                  version = "0.2.0";
                   strictDeps = true;
                   cargoVendorDir = rustDev.craneLib.vendorCargoDeps { inherit src; };
                   cargoArtifacts = rustDev.cargoArtifacts;
@@ -142,7 +140,7 @@
               gitHooks = {
                 pre-commit = pkgs.writeNushellScript "pre-commit" ''
                   print "⚡️ Running pre-commit checks..."
-                  nix build .#check-treefmt -L
+                  nix fmt -- --fail-on-change
                 '';
                 pre-push = pkgs.writeNushellScript "pre-push" ''
                   print "⚡️ Running flake checks..."
