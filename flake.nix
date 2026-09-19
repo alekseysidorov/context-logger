@@ -56,7 +56,7 @@
               # Keep the minimum compiler explicit while following the current stable channel.
               rustVersions = {
                 msrv = "1.85.1";
-                stable = "latest";
+                stable = "1.96.0";
               };
 
               # Checks use MSRV; development follows stable, and nightly supplies only rustfmt.
@@ -94,7 +94,7 @@
                 check-cargo-semver = pkgs.writeShellApplication {
                   name = "check-cargo-semver";
                   runtimeInputs = [
-                    pkgs.rust-bin.stable."1.96.0".default
+                    rustToolchains.msrv
                     pkgs.cargo-semver-checks
                   ];
                   text = ''exec cargo semver-checks --workspace "$@"'';
