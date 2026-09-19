@@ -149,7 +149,7 @@ impl LogScope {
     /// ```no_run
     #[doc = include_str!("../../examples/current_context.rs")]
     /// ```
-    /// 
+    ///
     /// # Notes
     ///
     /// - Returns an empty context if there is no active scope.
