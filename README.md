@@ -2,7 +2,7 @@
 
 [![Crates.io](https://img.shields.io/crates/v/context-logger.svg)](https://crates.io/crates/context-logger)
 [![Documentation](https://docs.rs/context-logger/badge.svg)](https://docs.rs/context-logger)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 
 <!-- ANCHOR: description -->
 
@@ -209,9 +209,12 @@ async fn spawn_background_job(user_id: &str) {
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE] file for
-details.
+This project is licensed under either the [Apache License, Version 2.0]
+([LICENSE-APACHE]) or the [MIT license] ([LICENSE-MIT]), at your option.
 
 [`log`]: https://crates.io/crates/log
-[LICENSE]: ./LICENSE
+[Apache License, Version 2.0]: ./LICENSE-APACHE
+[LICENSE-APACHE]: ./LICENSE-APACHE
+[LICENSE-MIT]: ./LICENSE-MIT
+[MIT license]: ./LICENSE-MIT
 [`fastrace`]: https://docs.rs/fastrace
