@@ -133,7 +133,6 @@
                   rustToolchains.stable
                   pkgs.cargo-audit
                   pkgs.cargo-nextest
-                  pkgs.rust-analyzer
                 ];
               };
 
