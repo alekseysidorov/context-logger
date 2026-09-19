@@ -90,19 +90,28 @@
                   cargoVendorDir = rustDev.craneLib.vendorCargoDeps { inherit src; };
                   cargoArtifacts = rustDev.cargoArtifacts;
                 };
+
                 # Additional runtime checks.
-                check-cargo-semver = pkgs.writeShellApplication {
+                check-cargo-semver = pkgs.writeNushellApplication {
                   name = "check-cargo-semver";
                   runtimeInputs = [
                     rustToolchains.stable
                     pkgs.cargo-semver-checks
                   ];
-                  text = ''exec cargo semver-checks --workspace "$@"'';
+                  text = ''
+                    def main [...args: string] {
+                      ^cargo semver-checks --workspace ...$args
+                    }
+                  '';
                 };
-                check-cargo-publish = pkgs.writeShellApplication {
+                check-cargo-publish = pkgs.writeNushellApplication {
                   name = "check-cargo-publish";
                   runtimeInputs = [ rustToolchains.stable ];
-                  text = ''exec cargo publish --workspace --dry-run --allow-dirty "$@"'';
+                  text = ''
+                    def main [...args: string] {
+                      ^cargo publish --workspace --dry-run --allow-dirty ...$args
+                    }
+                  '';
                 };
               };
 
