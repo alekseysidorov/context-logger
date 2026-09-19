@@ -94,7 +94,7 @@
                 check-cargo-semver = pkgs.writeShellApplication {
                   name = "check-cargo-semver";
                   runtimeInputs = [
-                    rustToolchains.msrv
+                    rustToolchains.stable
                     pkgs.cargo-semver-checks
                   ];
                   text = ''exec cargo semver-checks --workspace "$@"'';
