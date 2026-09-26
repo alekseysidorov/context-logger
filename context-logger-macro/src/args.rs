@@ -12,24 +12,6 @@ pub struct ContextFields {
     pub sections: Vec<Section>,
 }
 
-impl ContextFields {
-    fn parse_fields(input: ParseStream<'_>, seen_keys: &mut HashSet<String>) -> Result<Vec<Field>> {
-        Punctuated::<Field, Token![,]>::parse_terminated(input)?
-            .into_iter()
-            .map(|field| {
-                if !seen_keys.insert(field.key.name()) {
-                    return Err(syn::Error::new_spanned(
-                        key_token(&field.key),
-                        "duplicate log_scope field",
-                    ));
-                }
-
-                Ok(field)
-            })
-            .collect()
-    }
-}
-
 #[derive(Clone, Debug, EnumDiscriminants, PartialEq, Eq)]
 #[strum_discriminants(name(SectionKind), derive(Hash))]
 pub enum Section {
@@ -50,15 +32,6 @@ pub enum Key {
     String(LitStr),
 }
 
-impl Key {
-    pub(crate) fn name(&self) -> String {
-        match self {
-            Self::Ident(ident) => ident.to_string(),
-            Self::String(string) => string.value(),
-        }
-    }
-}
-
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Mode {
     Default,
@@ -67,6 +40,24 @@ pub enum Mode {
     Error,
     Serde,
     Sval,
+}
+
+impl ContextFields {
+    fn parse_fields(input: ParseStream<'_>, seen_keys: &mut HashSet<String>) -> Result<Vec<Field>> {
+        Punctuated::<Field, Token![,]>::parse_terminated(input)?
+            .into_iter()
+            .map(|field| {
+                if !seen_keys.insert(field.key.name()) {
+                    return Err(syn::Error::new_spanned(
+                        key_token(&field.key),
+                        "duplicate log_scope field",
+                    ));
+                }
+
+                Ok(field)
+            })
+            .collect()
+    }
 }
 
 impl Parse for ContextFields {
@@ -117,10 +108,19 @@ impl TryFrom<&Ident> for SectionKind {
 }
 
 impl Section {
-    fn new(kind: SectionKind, fields: Vec<Field>) -> Self {
+    const fn new(kind: SectionKind, fields: Vec<Field>) -> Self {
         match kind {
             SectionKind::LocalFields => Self::LocalFields(fields),
             SectionKind::InheritedFields => Self::InheritedFields(fields),
+        }
+    }
+}
+
+impl Key {
+    pub(crate) fn name(&self) -> String {
+        match self {
+            Self::Ident(ident) => ident.to_string(),
+            Self::String(string) => string.value(),
         }
     }
 }
