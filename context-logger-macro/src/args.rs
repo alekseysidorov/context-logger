@@ -7,26 +7,26 @@ use syn::{
     punctuated::Punctuated,
 };
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ContextFields {
     pub sections: Vec<Section>,
 }
 
-#[derive(Debug, EnumDiscriminants)]
-#[strum_discriminants(name(SectionKind))]
+#[derive(Clone, Debug, EnumDiscriminants)]
+#[strum_discriminants(name(SectionKind), derive(Hash))]
 pub enum Section {
     LocalFields(Vec<Field>),
     InheritedFields(Vec<Field>),
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Field {
     pub key: Key,
     pub mode: Mode,
     pub value: Expr,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub enum Key {
     Ident(Ident),
     String(LitStr),
@@ -41,7 +41,7 @@ impl Key {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub enum Mode {
     Default,
     Debug,
@@ -55,21 +55,18 @@ impl Parse for ContextFields {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
         let mut sections = Vec::new();
         let mut seen_keys = HashSet::new();
-        let mut local_fields_seen = false;
-        let mut inherited_fields_seen = false;
+        let mut seen_sections = HashSet::new();
         while !input.is_empty() {
             let name: Ident = input.parse()?;
             let section_kind = SectionKind::try_from(&name)?;
-            match section_kind {
-                SectionKind::LocalFields if local_fields_seen => {
-                    return Err(syn::Error::new(name.span(), "duplicate log_scope section"));
-                }
-                SectionKind::InheritedFields if inherited_fields_seen => {
-                    return Err(syn::Error::new(name.span(), "duplicate log_scope section"));
-                }
-                SectionKind::LocalFields => local_fields_seen = true,
-                SectionKind::InheritedFields => inherited_fields_seen = true,
+
+            if !seen_sections.insert(section_kind) {
+                return Err(syn::Error::new(
+                    name.span(),
+                    format!("duplicate `{name}` log_scope section"),
+                ));
             }
+
             let content;
             parenthesized!(content in input);
             let fields = parse_fields(&content, &mut seen_keys)?;
@@ -77,7 +74,9 @@ impl Parse for ContextFields {
                 SectionKind::LocalFields => Section::LocalFields(fields),
                 SectionKind::InheritedFields => Section::InheritedFields(fields),
             });
-            let _ = input.parse::<Token![,]>();
+            if !input.is_empty() {
+                input.parse::<Token![,]>()?;
+            }
         }
         Ok(Self { sections })
     }
@@ -260,6 +259,11 @@ mod tests {
         assert!(parse_str::<ContextFields>("local_fields(a = 1), local_fields(b = 2)").is_err());
         assert!(parse_str::<ContextFields>("local_fields(a = 1, a = 2)").is_err());
         assert!(parse_str::<ContextFields>("other_fields(a = 1)").is_err());
+    }
+
+    #[test]
+    fn rejects_missing_section_separator() {
+        assert!(parse_str::<ContextFields>("local_fields(a = 1) inherited_fields(b = 2)").is_err());
     }
 
     #[test]
