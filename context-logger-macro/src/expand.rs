@@ -50,10 +50,7 @@ fn context_expression(args: &ContextFields) -> Result<TokenStream> {
             Section::InheritedFields(fields) => (fields, format_ident!("with_inherited_field")),
         };
         for field in fields {
-            let key = match &field.key {
-                Key::Ident(key) => quote!(stringify!(#key)),
-                Key::String(key) => quote!(#key),
-            };
+            let key_name = field.key.name();
             let value = match field.mode {
                 Mode::Default => {
                     let value = &field.value;
@@ -70,7 +67,7 @@ fn context_expression(args: &ContextFields) -> Result<TokenStream> {
                     ));
                 }
             };
-            expression = quote!(#expression.#method(#key, #value));
+            expression = quote!(#expression.#method(#key_name, #value));
         }
     }
     Ok(expression)
