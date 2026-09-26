@@ -1,29 +1,64 @@
-use context_logger::ContextLogger;
-use log::{LevelFilter, Record, kv::Key};
+use std::sync::mpsc::{self, Receiver, Sender};
 
-pub trait LogRecordExt {
-    fn get_field(&self, key: &str) -> Option<serde_json::Value>;
+use log::{Level, LevelFilter, Log, Metadata, Record, kv};
+use serde_json::{Map, Value};
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct RecordSnapshot {
+    pub level: Level,
+    pub target: String,
+    pub message: String,
+    pub fields: Map<String, Value>,
 }
 
-impl LogRecordExt for Record<'_> {
-    fn get_field(&self, key: &str) -> Option<serde_json::Value> {
-        let key = Key::from_str(key);
-        let val = self.key_values().get(key)?;
-        serde_json::to_value(val).ok()
+#[must_use]
+pub fn channel_logger() -> (ChannelLogger, Receiver<RecordSnapshot>) {
+    let (sender, receiver) = mpsc::channel();
+    (ChannelLogger { sender }, receiver)
+}
+
+#[derive(Debug)]
+pub struct ChannelLogger {
+    sender: Sender<RecordSnapshot>,
+}
+
+impl Log for ChannelLogger {
+    fn enabled(&self, metadata: &Metadata<'_>) -> bool {
+        metadata.level() <= LevelFilter::Trace
+    }
+
+    fn log(&self, record: &Record<'_>) {
+        self.sender
+            .send(RecordSnapshot::from_record(record))
+            .expect("test logger receiver was dropped");
+    }
+
+    fn flush(&self) {}
+}
+
+impl RecordSnapshot {
+    fn from_record(record: &Record<'_>) -> Self {
+        let mut fields = Map::new();
+        record
+            .key_values()
+            .visit(&mut JsonFields(&mut fields))
+            .expect("test logger failed to visit record fields");
+
+        Self {
+            level: record.level(),
+            target: record.target().to_owned(),
+            message: record.args().to_string(),
+            fields,
+        }
     }
 }
 
-pub fn check_logger_once<I, F>(init: I, check: F)
-where
-    I: FnOnce(ContextLogger) -> ContextLogger,
-    F: Fn(&Record) -> std::io::Result<()> + Send + Sync + 'static,
-{
-    let level_filter = LevelFilter::Trace;
-    let logger = init(ContextLogger::new(
-        env_logger::Builder::new()
-            .filter_level(level_filter)
-            .format(move |_fmt, record| check(record))
-            .build(),
-    ));
-    logger.init(level_filter);
+struct JsonFields<'a>(&'a mut Map<String, Value>);
+
+impl<'kvs> kv::VisitSource<'kvs> for JsonFields<'_> {
+    fn visit_pair(&mut self, key: kv::Key<'kvs>, value: kv::Value<'kvs>) -> Result<(), kv::Error> {
+        let value = serde_json::to_value(value).expect("log field is not JSON serializable");
+        self.0.insert(key.to_string(), value);
+        Ok(())
+    }
 }

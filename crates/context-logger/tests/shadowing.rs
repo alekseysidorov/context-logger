@@ -1,24 +1,17 @@
 // Warning: Because each test initializes the logger, we need to split the
 // tests into separate files to avoid multiple initializations of the logger.
 
-use context_logger::{LogContext, LogContextExt};
+use context_logger::{ContextLogger, LogContext, LogContextExt};
+use serde_json::json;
 
-use crate::common::{LogRecordExt as _, check_logger_once};
+use crate::common::channel_logger;
 
 pub mod common;
 
 #[test]
 fn test_inherited_fields_shadowing() {
-    check_logger_once(
-        |logger| logger,
-        |record| {
-            assert_eq!(record.get_field("answer").unwrap(), 42);
-            assert_eq!(record.get_field("name").unwrap(), "Robin");
-            assert_eq!(record.get_field("shadow").unwrap(), true);
-            assert_eq!(record.get_field("inherited_shadow").unwrap(), "child");
-            Ok(())
-        },
-    );
+    let (logger, records) = channel_logger();
+    ContextLogger::new(logger).init(log::LevelFilter::Trace);
 
     LogContext::new()
         .with_inherited_field("answer", 42)
@@ -33,4 +26,18 @@ fn test_inherited_fields_shadowing() {
                     log::info!("Ipsum dolor sit amet, consectetur adipiscing elit");
                 });
         });
+
+    let record = records.recv().unwrap();
+    assert_eq!(
+        record.fields,
+        json!({
+            "answer": 42,
+            "name": "Robin",
+            "shadow": true,
+            "inherited_shadow": "child",
+        })
+        .as_object()
+        .unwrap()
+        .clone()
+    );
 }
