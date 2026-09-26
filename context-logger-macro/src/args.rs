@@ -98,7 +98,7 @@ fn parse_fields(input: ParseStream<'_>, seen_keys: &mut HashSet<String>) -> Resu
         };
         let mode = if input.peek(Token![:]) {
             input.parse::<Token![:]>()?;
-            parse_mode(input)?
+            input.parse()?
         } else {
             Mode::Default
         };
@@ -135,26 +135,31 @@ fn parse_fields(input: ParseStream<'_>, seen_keys: &mut HashSet<String>) -> Resu
     Ok(fields)
 }
 
-fn parse_mode(input: ParseStream<'_>) -> Result<Mode> {
-    if input.peek(Token![?]) {
-        input.parse::<Token![?]>()?;
-        return Ok(Mode::Debug);
-    }
-    if input.peek(Token![%]) {
-        input.parse::<Token![%]>()?;
-        return Ok(Mode::Display);
-    }
-    let ident: Ident = input.parse()?;
-    match ident.to_string().as_str() {
-        "debug" => Ok(Mode::Debug),
-        "display" => Ok(Mode::Display),
-        "err" => Ok(Mode::Error),
-        "serde" => Ok(Mode::Serde),
-        "sval" => Ok(Mode::Sval),
-        _ => Err(syn::Error::new(
-            ident.span(),
-            "unknown log_scope capture modifier",
-        )),
+impl Parse for Mode {
+    fn parse(input: ParseStream<'_>) -> Result<Self> {
+        // `?` and `%` are punctuation tokens rather than identifiers, so the
+        // short forms must be parsed before the named forms below.
+        if input.peek(Token![?]) {
+            input.parse::<Token![?]>()?;
+            return Ok(Self::Debug);
+        }
+        if input.peek(Token![%]) {
+            input.parse::<Token![%]>()?;
+            return Ok(Self::Display);
+        }
+
+        let ident: Ident = input.parse()?;
+        match ident.to_string().as_str() {
+            "debug" => Ok(Self::Debug),
+            "display" => Ok(Self::Display),
+            "err" => Ok(Self::Error),
+            "serde" => Ok(Self::Serde),
+            "sval" => Ok(Self::Sval),
+            _ => Err(syn::Error::new(
+                ident.span(),
+                "unknown log_scope capture modifier",
+            )),
+        }
     }
 }
 
