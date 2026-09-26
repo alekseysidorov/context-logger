@@ -23,11 +23,24 @@ async fn async_scope(request_id: String, value: String) -> context_logger::LogCo
     LogScope::current_context()
 }
 
+#[log_scope(local_fields(a, b, c))]
+fn shorthand_scope(a: u32, b: u32, c: u32) -> context_logger::LogContext {
+    LogScope::current_context()
+}
+
 #[test]
 fn sync_scope_uses_both_sections() {
     let context = sync_scope("req-1".to_owned());
     assert_eq!(value(&context, "request_id").as_deref(), Some("req-1"));
     assert_eq!(value(&context, "operation").as_deref(), Some("sync"));
+}
+
+#[test]
+fn shorthand_fields_use_argument_names_as_keys() {
+    let context = shorthand_scope(1, 2, 3);
+    assert_eq!(value(&context, "a").as_deref(), Some("1"));
+    assert_eq!(value(&context, "b").as_deref(), Some("2"));
+    assert_eq!(value(&context, "c").as_deref(), Some("3"));
 }
 
 #[tokio::test]
