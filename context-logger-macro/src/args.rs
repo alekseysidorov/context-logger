@@ -4,6 +4,7 @@ use strum::EnumDiscriminants;
 use syn::{
     Expr, Ident, LitStr, Result, Token, parenthesized,
     parse::{Parse, ParseStream},
+    punctuated::Punctuated,
 };
 
 #[derive(Debug)]
@@ -29,6 +30,15 @@ pub struct Field {
 pub enum Key {
     Ident(Ident),
     String(LitStr),
+}
+
+impl Key {
+    pub(crate) fn name(&self) -> String {
+        match self {
+            Self::Ident(ident) => ident.to_string(),
+            Self::String(string) => string.value(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -88,20 +98,28 @@ impl TryFrom<&Ident> for SectionKind {
     }
 }
 
-fn parse_fields(input: ParseStream<'_>, seen_keys: &mut HashSet<String>) -> Result<Vec<Field>> {
-    let mut fields = Vec::new();
-    while !input.is_empty() {
-        let key = if input.peek(LitStr) {
-            Key::String(input.parse()?)
+impl Parse for Key {
+    fn parse(input: ParseStream<'_>) -> Result<Self> {
+        if input.peek(LitStr) {
+            Ok(Self::String(input.parse()?))
         } else {
-            Key::Ident(input.parse()?)
-        };
+            Ok(Self::Ident(input.parse()?))
+        }
+    }
+}
+
+impl Parse for Field {
+    fn parse(input: ParseStream<'_>) -> Result<Self> {
+        // A field starts with either an identifier key or a string-literal key.
+        let key: Key = input.parse()?;
+        // Capture modifiers use the `:modifier` syntax from `log`'s KV macros.
         let mode = if input.peek(Token![:]) {
             input.parse::<Token![:]>()?;
             input.parse()?
         } else {
             Mode::Default
         };
+        // An explicit value follows `=`; an identifier key may use shorthand.
         let value = if input.peek(Token![=]) {
             input.parse::<Token![=]>()?;
             input.parse()?
@@ -116,23 +134,25 @@ fn parse_fields(input: ParseStream<'_>, seen_keys: &mut HashSet<String>) -> Resu
                 }
             }
         };
-        let key_text = match &key {
-            Key::Ident(i) => i.to_string(),
-            Key::String(s) => s.value(),
-        };
-        if !seen_keys.insert(key_text) {
-            return Err(syn::Error::new_spanned(
-                key_token(&key),
-                "duplicate log_scope field",
-            ));
-        }
-        fields.push(Field { key, mode, value });
-        if input.is_empty() {
-            break;
-        }
-        input.parse::<Token![,]>()?;
+
+        Ok(Self { key, mode, value })
     }
-    Ok(fields)
+}
+
+fn parse_fields(input: ParseStream<'_>, seen_keys: &mut HashSet<String>) -> Result<Vec<Field>> {
+    Punctuated::<Field, Token![,]>::parse_terminated(input)?
+        .into_iter()
+        .map(|field| {
+            if !seen_keys.insert(field.key.name()) {
+                return Err(syn::Error::new_spanned(
+                    key_token(&field.key),
+                    "duplicate log_scope field",
+                ));
+            }
+
+            Ok(field)
+        })
+        .collect()
 }
 
 impl Parse for Mode {
