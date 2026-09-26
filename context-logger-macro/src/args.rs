@@ -70,10 +70,7 @@ impl Parse for ContextFields {
             let content;
             parenthesized!(content in input);
             let fields = parse_fields(&content, &mut seen_keys)?;
-            sections.push(match section_kind {
-                SectionKind::LocalFields => Section::LocalFields(fields),
-                SectionKind::InheritedFields => Section::InheritedFields(fields),
-            });
+            sections.push(Section::new(section_kind, fields));
             if !input.is_empty() {
                 input.parse::<Token![,]>()?;
             }
@@ -93,6 +90,15 @@ impl TryFrom<&Ident> for SectionKind {
                 ident.span(),
                 format!("unknown log_scope section: {ident}"),
             )),
+        }
+    }
+}
+
+impl Section {
+    fn new(kind: SectionKind, fields: Vec<Field>) -> Self {
+        match kind {
+            SectionKind::LocalFields => Self::LocalFields(fields),
+            SectionKind::InheritedFields => Self::InheritedFields(fields),
         }
     }
 }
