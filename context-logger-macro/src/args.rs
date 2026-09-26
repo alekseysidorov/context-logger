@@ -1,3 +1,4 @@
+use strum::{EnumDiscriminants, IntoDiscriminant};
 use syn::{
     Expr, Ident, LitStr, Result, Token, parenthesized,
     parse::{Parse, ParseStream},
@@ -8,10 +9,11 @@ pub struct Args {
     pub sections: Vec<Section>,
 }
 
-#[derive(Debug)]
-pub struct Section {
-    pub inherited: bool,
-    pub fields: Vec<Field>,
+#[derive(Debug, EnumDiscriminants)]
+#[strum_discriminants(name(SectionKind))]
+pub enum Section {
+    LocalFields(Vec<Field>),
+    InheritedFields(Vec<Field>),
 }
 
 #[derive(Debug)]
@@ -42,26 +44,33 @@ impl Parse for Args {
         let mut sections = Vec::new();
         while !input.is_empty() {
             let name: Ident = input.parse()?;
-            let inherited = match name.to_string().as_str() {
-                "local_fields" => false,
-                "inherited_fields" => true,
+            let section_kind = match name.to_string().as_str() {
+                "local_fields" => SectionKind::LocalFields,
+                "inherited_fields" => SectionKind::InheritedFields,
                 _ => return Err(syn::Error::new(name.span(), "unknown log_scope section")),
             };
             if sections
                 .iter()
-                .any(|section: &Section| section.inherited == inherited)
+                .any(|section: &Section| section.kind() == section_kind)
             {
                 return Err(syn::Error::new(name.span(), "duplicate log_scope section"));
             }
             let content;
             parenthesized!(content in input);
-            sections.push(Section {
-                inherited,
-                fields: parse_fields(&content)?,
+            let fields = parse_fields(&content)?;
+            sections.push(match section_kind {
+                SectionKind::LocalFields => Section::LocalFields(fields),
+                SectionKind::InheritedFields => Section::InheritedFields(fields),
             });
             let _ = input.parse::<Token![,]>();
         }
         Ok(Self { sections })
+    }
+}
+
+impl Section {
+    fn kind(&self) -> SectionKind {
+        self.discriminant()
     }
 }
 
@@ -147,11 +156,26 @@ impl Field {
     }
 }
 
+fn key_token(key: &Key) -> proc_macro2::TokenStream {
+    match key {
+        Key::Ident(i) => quote::quote!(#i),
+        Key::String(s) => quote::quote!(#s),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use syn::parse_str;
 
     use super::*;
+
+    impl Section {
+        fn all_fields(&self) -> &[Field] {
+            match self {
+                Self::LocalFields(fields) | Self::InheritedFields(fields) => fields,
+            }
+        }
+    }
 
     #[test]
     fn parses_sections_and_capture_modes() {
@@ -164,12 +188,18 @@ mod tests {
         .unwrap();
 
         assert_eq!(args.sections.len(), 2);
-        assert!(args.sections[0].inherited);
-        assert!(!args.sections[1].inherited);
-        assert!(matches!(args.sections[0].fields[0].mode, Mode::Default));
-        assert!(matches!(args.sections[0].fields[1].mode, Mode::Debug));
-        assert!(matches!(args.sections[0].fields[2].mode, Mode::Display));
-        assert!(matches!(args.sections[1].fields[1].mode, Mode::Serde));
+        assert!(matches!(args.sections[0], Section::InheritedFields(_)));
+        assert!(matches!(args.sections[1], Section::LocalFields(_)));
+        assert!(matches!(
+            args.sections[0].all_fields()[0].mode,
+            Mode::Default
+        ));
+        assert!(matches!(args.sections[0].all_fields()[1].mode, Mode::Debug));
+        assert!(matches!(
+            args.sections[0].all_fields()[2].mode,
+            Mode::Display
+        ));
+        assert!(matches!(args.sections[1].all_fields()[1].mode, Mode::Serde));
     }
 
     #[test]
@@ -180,7 +210,7 @@ mod tests {
         .unwrap();
 
         let modes = args.sections[0]
-            .fields
+            .all_fields()
             .iter()
             .map(|field| field.mode)
             .collect::<Vec<_>>();
@@ -208,11 +238,5 @@ mod tests {
     #[test]
     fn rejects_string_shorthand() {
         assert!(parse_str::<Args>(r#"local_fields("field")"#).is_err());
-    }
-}
-fn key_token(key: &Key) -> proc_macro2::TokenStream {
-    match key {
-        Key::Ident(i) => quote::quote!(#i),
-        Key::String(s) => quote::quote!(#s),
     }
 }

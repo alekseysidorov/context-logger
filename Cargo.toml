@@ -16,6 +16,7 @@ proc-macro-crate = "3"
 proc-macro2 = "1"
 quote = "1"
 syn = { version = "3", features = ["full", "extra-traits"] }
+strum = { version = "0.27", features = ["derive"] }
 tokio = { version = "1.53", features = ["macros", "rt-multi-thread", "time"] }
 
 [workspace.lints.clippy]
