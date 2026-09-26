@@ -3,9 +3,9 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{Error, ItemFn, Result, spanned::Spanned};
 
-use crate::args::{Args, Field, Key, Mode, Section};
+use crate::args::{ContextFields, Field, Key, Mode, Section};
 
-pub fn expand(args: &Args, mut function: ItemFn) -> Result<TokenStream> {
+pub fn expand(args: &ContextFields, mut function: ItemFn) -> Result<TokenStream> {
     if function.sig.constness.is_some() {
         return Err(Error::new(
             function.sig.constness.span(),
@@ -19,7 +19,7 @@ pub fn expand(args: &Args, mut function: ItemFn) -> Result<TokenStream> {
     }
 }
 
-fn expand_sync(args: &Args, function: &mut ItemFn) -> Result<TokenStream> {
+fn expand_sync(args: &ContextFields, function: &mut ItemFn) -> Result<TokenStream> {
     let context = context_expression(args)?;
     let body = &function.block;
     let crate_path = crate_path()?;
@@ -30,7 +30,7 @@ fn expand_sync(args: &Args, function: &mut ItemFn) -> Result<TokenStream> {
     Ok(quote!(#function))
 }
 
-fn expand_async(args: &Args, function: &mut ItemFn) -> Result<TokenStream> {
+fn expand_async(args: &ContextFields, function: &mut ItemFn) -> Result<TokenStream> {
     let context = context_expression(args)?;
     let body = &function.block;
     let crate_path = crate_path()?;
@@ -41,20 +41,15 @@ fn expand_async(args: &Args, function: &mut ItemFn) -> Result<TokenStream> {
     Ok(quote!(#function))
 }
 
-fn context_expression(args: &Args) -> Result<TokenStream> {
+fn context_expression(args: &ContextFields) -> Result<TokenStream> {
     let crate_path = crate_path()?;
     let mut expression = quote!(#crate_path::LogContext::new());
-    let mut seen = std::collections::HashSet::new();
     for section in &args.sections {
         let (fields, method) = match section {
             Section::LocalFields(fields) => (fields, format_ident!("with_local_field")),
             Section::InheritedFields(fields) => (fields, format_ident!("with_inherited_field")),
         };
         for field in fields {
-            let key = field.key_text();
-            if !seen.insert(key) {
-                return Err(Error::new(field_span(field), "duplicate log_scope field"));
-            }
             let key = match &field.key {
                 Key::Ident(key) => quote!(stringify!(#key)),
                 Key::String(key) => quote!(#key),
@@ -104,17 +99,5 @@ fn field_span(field: &Field) -> proc_macro2::Span {
     match &field.key {
         Key::Ident(key) => key.span(),
         Key::String(key) => key.span(),
-    }
-}
-
-trait FieldExt {
-    fn key_text(&self) -> String;
-}
-impl FieldExt for Field {
-    fn key_text(&self) -> String {
-        match &self.key {
-            Key::Ident(key) => key.to_string(),
-            Key::String(key) => key.value(),
-        }
     }
 }

@@ -10,6 +10,6 @@ mod expand;
 
 #[manyhow]
 #[proc_macro_attribute]
-pub fn log_scope(args: args::Args, item: syn::ItemFn) -> manyhow::Result<TokenStream2> {
+pub fn log_scope(args: args::ContextFields, item: syn::ItemFn) -> manyhow::Result<TokenStream2> {
     expand::expand(&args, item).map_err(Into::into)
 }
