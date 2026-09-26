@@ -44,11 +44,7 @@ impl Parse for Args {
         let mut sections = Vec::new();
         while !input.is_empty() {
             let name: Ident = input.parse()?;
-            let section_kind = match name.to_string().as_str() {
-                "local_fields" => SectionKind::LocalFields,
-                "inherited_fields" => SectionKind::InheritedFields,
-                _ => return Err(syn::Error::new(name.span(), "unknown log_scope section")),
-            };
+            let section_kind = SectionKind::try_from(&name)?;
             if sections
                 .iter()
                 .any(|section: &Section| section.kind() == section_kind)
@@ -71,6 +67,23 @@ impl Parse for Args {
 impl Section {
     fn kind(&self) -> SectionKind {
         self.discriminant()
+    }
+}
+
+impl TryFrom<&Ident> for SectionKind {
+    type Error = syn::Error;
+
+    fn try_from(ident: &Ident) -> Result<Self> {
+        if ident == "local_fields" {
+            Ok(Self::LocalFields)
+        } else if ident == "inherited_fields" {
+            Ok(Self::InheritedFields)
+        } else {
+            Err(syn::Error::new(
+                ident.span(),
+                format!("unknown log_scope section: {ident}"),
+            ))
+        }
     }
 }
 
