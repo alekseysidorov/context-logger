@@ -1,0 +1,27 @@
+[package]
+name = "context-logger-macro"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+description = "Procedural macros for context-logger."
+repository.workspace = true
+license.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+manyhow.workspace = true
+proc-macro-crate.workspace = true
+proc-macro2.workspace = true
+quote.workspace = true
+syn.workspace = true
+
+[dev-dependencies]
+context-logger = { path = ".." }
+pretty_assertions.workspace = true
+tokio.workspace = true
+
+[lints]
+workspace = true
