@@ -72,7 +72,7 @@ type LogValueFn = Box<dyn Fn(&log::Record) -> LogValue + Send + Sync>;
 
 #[cfg(feature = "derive")]
 #[cfg_attr(docsrs, doc(cfg(feature = "derive")))]
-pub use context_logger_macro::log_scope;
+pub use context_logger_derive::log_scope;
 
 pub use self::{
     context::LogContext,

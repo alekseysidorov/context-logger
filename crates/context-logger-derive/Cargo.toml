@@ -1,5 +1,5 @@
 [package]
-name = "context-logger-macro"
+name = "context-logger-derive"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -20,9 +20,9 @@ strum.workspace = true
 syn.workspace = true
 
 [dev-dependencies]
-context-logger = { path = ".." }
+context-logger = { path = "../context-logger" }
 pretty_assertions.workspace = true
-tokio.workspace = true
+trybuild.workspace = true
 
 [lints]
 workspace = true
