@@ -36,7 +36,7 @@ and this project adheres to
   closure in a `LogContext` scope.
 - Added `LogScope::current_context` — captures and clones the currently active
   logging context so it can be propagated to spawned threads and async tasks.
-  See the new example [`current_context`](examples/current_context.rs).
+  See the new example [`current_context`](crates/context-logger/examples/current_context.rs).
 - _breaking_ Replaced `LogContext::enter` instance method with the
   `LogScope::enter(context)` static method; `LogScope` is now the explicit guard
   type that keeps the context active and removes it from the stack on drop

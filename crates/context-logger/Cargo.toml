@@ -1,0 +1,51 @@
+[package]
+name = "context-logger"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+description = "A small structured context propagation layer for the standard Rust log ecosystem."
+documentation = "https://docs.rs/crate/context-logger"
+repository.workspace = true
+license.workspace = true
+
+keywords = [
+  "context-logging",
+  "log",
+  "logging",
+  "structured-logging",
+  "tracing",
+]
+categories = ["asynchronous", "development-tools::debugging"]
+
+[features]
+default = ["derive"]
+derive = ["dep:context-logger-derive"]
+
+[dependencies]
+context-logger-derive = { workspace = true, optional = true }
+
+erased-serde = "0.4.10"
+include-utils = "0.2.4"
+log.workspace = true
+pin-project = "1"
+serde = "1"
+
+[dev-dependencies]
+chrono = "0.4"
+env_logger.workspace = true
+futures-util = "0.3"
+pretty_assertions = "1.4"
+serde = { version = "1", features = ["derive"] }
+serde_json.workspace = true
+static_assertions = "1"
+structured-logger = { version = "1.0" }
+tokio.workspace = true
+
+[lints]
+workspace = true
+
+[[test]]
+name = "log_scope_derive"
+path = "tests/log_scope_derive.rs"
+required-features = ["derive"]
