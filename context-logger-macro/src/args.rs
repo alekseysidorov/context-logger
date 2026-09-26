@@ -12,6 +12,24 @@ pub struct ContextFields {
     pub sections: Vec<Section>,
 }
 
+impl ContextFields {
+    fn parse_fields(input: ParseStream<'_>, seen_keys: &mut HashSet<String>) -> Result<Vec<Field>> {
+        Punctuated::<Field, Token![,]>::parse_terminated(input)?
+            .into_iter()
+            .map(|field| {
+                if !seen_keys.insert(field.key.name()) {
+                    return Err(syn::Error::new_spanned(
+                        key_token(&field.key),
+                        "duplicate log_scope field",
+                    ));
+                }
+
+                Ok(field)
+            })
+            .collect()
+    }
+}
+
 #[derive(Clone, Debug, EnumDiscriminants)]
 #[strum_discriminants(name(SectionKind), derive(Hash))]
 pub enum Section {
@@ -53,9 +71,10 @@ pub enum Mode {
 
 impl Parse for ContextFields {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
-        let mut sections = Vec::new();
         let mut seen_keys = HashSet::new();
         let mut seen_sections = HashSet::new();
+
+        let mut sections = Vec::new();
         while !input.is_empty() {
             let name: Ident = input.parse()?;
             let section_kind = SectionKind::try_from(&name)?;
@@ -67,10 +86,13 @@ impl Parse for ContextFields {
                 ));
             }
 
-            let content;
-            parenthesized!(content in input);
-            let fields = parse_fields(&content, &mut seen_keys)?;
+            let fields = {
+                let content;
+                parenthesized!(content in input);
+                Self::parse_fields(&content, &mut seen_keys)?
+            };
             sections.push(Section::new(section_kind, fields));
+
             if !input.is_empty() {
                 input.parse::<Token![,]>()?;
             }
@@ -142,22 +164,6 @@ impl Parse for Field {
 
         Ok(Self { key, mode, value })
     }
-}
-
-fn parse_fields(input: ParseStream<'_>, seen_keys: &mut HashSet<String>) -> Result<Vec<Field>> {
-    Punctuated::<Field, Token![,]>::parse_terminated(input)?
-        .into_iter()
-        .map(|field| {
-            if !seen_keys.insert(field.key.name()) {
-                return Err(syn::Error::new_spanned(
-                    key_token(&field.key),
-                    "duplicate log_scope field",
-                ));
-            }
-
-            Ok(field)
-        })
-        .collect()
 }
 
 impl Parse for Mode {
