@@ -1,81 +1,91 @@
 use proc_macro_crate::{FoundCrate, crate_name};
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
+use quote::quote;
 use syn::{Error, ItemFn, Result, spanned::Spanned};
 
-use crate::args::{ContextFields, Field, Key, Mode, Section};
+use crate::args::{ContextFields, Field, Mode, Section};
 
 pub fn expand(args: &ContextFields, mut function: ItemFn) -> Result<TokenStream> {
-    if function.sig.constness.is_some() {
+    reject_const_function(&function)?;
+
+    let crate_path = crate_path()?;
+    let context = context_expression(args, &crate_path)?;
+    let body = &function.block;
+
+    function.block = if function.sig.asyncness.is_some() {
+        syn::parse_quote!({
+            let __log_scope_context = #context;
+            #crate_path::FutureExt::in_log_context(
+                async #body,
+                __log_scope_context,
+            )
+            .await
+        })
+    } else {
+        syn::parse_quote!({
+            let __log_scope_context = #context;
+            #crate_path::LogContextExt::in_scope(
+                __log_scope_context,
+                || #body,
+            )
+        })
+    };
+
+    Ok(quote!(#function))
+}
+
+fn reject_const_function(function: &ItemFn) -> Result<()> {
+    if let Some(constness) = function.sig.constness {
         return Err(Error::new(
-            function.sig.constness.span(),
+            constness.span(),
             "#[log_scope] cannot be applied to const functions",
         ));
     }
-    if function.sig.asyncness.is_some() {
-        expand_async(args, &mut function)
-    } else {
-        expand_sync(args, &mut function)
-    }
+
+    Ok(())
 }
 
-fn expand_sync(args: &ContextFields, function: &mut ItemFn) -> Result<TokenStream> {
-    let context = context_expression(args)?;
-    let body = &function.block;
-    let crate_path = crate_path()?;
-    function.block = syn::parse_quote!({
-        let __log_scope_context = #context;
-        #crate_path::LogContextExt::in_scope(__log_scope_context, || #body)
-    });
-    Ok(quote!(#function))
-}
-
-fn expand_async(args: &ContextFields, function: &mut ItemFn) -> Result<TokenStream> {
-    let context = context_expression(args)?;
-    let body = &function.block;
-    let crate_path = crate_path()?;
-    function.block = syn::parse_quote!({
-        let __log_scope_context = #context;
-        #crate_path::FutureExt::in_log_context(async #body, __log_scope_context).await
-    });
-    Ok(quote!(#function))
-}
-
-fn context_expression(args: &ContextFields) -> Result<TokenStream> {
-    let crate_path = crate_path()?;
+fn context_expression(args: &ContextFields, crate_path: &TokenStream) -> Result<TokenStream> {
     let mut expression = quote!(#crate_path::LogContext::new());
+
     for section in &args.sections {
-        let (fields, method) = match section {
-            Section::LocalFields(fields) => (fields, format_ident!("with_local_field")),
-            Section::InheritedFields(fields) => (fields, format_ident!("with_inherited_field")),
-        };
-        for field in fields {
-            let key_name = field.key.name();
-            let value = match field.mode {
-                Mode::Default => {
-                    let value = &field.value;
-                    quote!(#value)
-                }
-                Mode::Debug => wrap_value(&crate_path, "debug", &field.value),
-                Mode::Display => wrap_value(&crate_path, "display", &field.value),
-                Mode::Error => wrap_value(&crate_path, "error", &field.value),
-                Mode::Serde => wrap_value(&crate_path, "serde", &field.value),
-                Mode::Sval => {
-                    return Err(Error::new(
-                        field_span(field),
-                        "`sval` capture is not supported by context-logger",
-                    ));
-                }
-            };
-            expression = quote!(#expression.#method(#key_name, #value));
-        }
+        expression = append_section(expression, section, crate_path)?;
     }
+
     Ok(expression)
 }
 
-fn wrap_value(crate_path: &TokenStream, method: &str, value: &syn::Expr) -> TokenStream {
-    let method = syn::Ident::new(method, value.span());
-    quote!(#crate_path::LogValue::#method(#value))
+fn append_section(
+    context: TokenStream,
+    section: &Section,
+    crate_path: &TokenStream,
+) -> Result<TokenStream> {
+    let (fields, method) = match section {
+        Section::LocalFields(fields) => (fields, quote!(with_local_field)),
+        Section::InheritedFields(fields) => (fields, quote!(with_inherited_field)),
+    };
+
+    fields.iter().try_fold(context, |context, field| {
+        let key = field.key.name();
+        let value = field_value(field, crate_path)?;
+        Ok(quote!(#context.#method(#key, #value)))
+    })
+}
+
+fn field_value(field: &Field, crate_path: &TokenStream) -> Result<TokenStream> {
+    let value = &field.value;
+
+    match field.mode {
+        Mode::Default => Ok(quote!(#value)),
+        Mode::Debug => Ok(quote!(#crate_path::LogValue::debug(#value))),
+        Mode::Display => Ok(quote!(#crate_path::LogValue::display(#value))),
+        Mode::Error => Ok(quote!(#crate_path::LogValue::error(#value))),
+        Mode::Serde => Ok(quote!(#crate_path::LogValue::serde(#value))),
+        Mode::Sval => Err(Error::new(
+            field.key.span(),
+            "`sval` capture is not supported by context-logger",
+        )),
+    }
 }
 
 fn crate_path() -> Result<TokenStream> {
@@ -89,12 +99,5 @@ fn crate_path() -> Result<TokenStream> {
             proc_macro2::Span::call_site(),
             format!("unable to resolve context-logger crate: {error}"),
         )),
-    }
-}
-
-fn field_span(field: &Field) -> proc_macro2::Span {
-    match &field.key {
-        Key::Ident(key) => key.span(),
-        Key::String(key) => key.span(),
     }
 }

@@ -123,6 +123,13 @@ impl Key {
             Self::String(string) => string.value(),
         }
     }
+
+    pub(crate) fn span(&self) -> proc_macro2::Span {
+        match self {
+            Self::Ident(ident) => ident.span(),
+            Self::String(string) => string.span(),
+        }
+    }
 }
 
 impl Parse for Key {
