@@ -3,9 +3,9 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 use syn::{Error, ItemFn, Result, spanned::Spanned};
 
-use crate::args::{Args, Field, Key, Mode};
+use crate::args::{Args, Field, Key, Mode, Section};
 
-pub fn expand(args: Args, mut function: ItemFn) -> Result<TokenStream> {
+pub fn expand(args: &Args, mut function: ItemFn) -> Result<TokenStream> {
     if function.sig.constness.is_some() {
         return Err(Error::new(
             function.sig.constness.span(),
@@ -19,8 +19,8 @@ pub fn expand(args: Args, mut function: ItemFn) -> Result<TokenStream> {
     }
 }
 
-fn expand_sync(args: Args, function: &mut ItemFn) -> Result<TokenStream> {
-    let context = context_expression(&args)?;
+fn expand_sync(args: &Args, function: &mut ItemFn) -> Result<TokenStream> {
+    let context = context_expression(args)?;
     let body = &function.block;
     let crate_path = crate_path()?;
     function.block = syn::parse_quote!({
@@ -30,8 +30,8 @@ fn expand_sync(args: Args, function: &mut ItemFn) -> Result<TokenStream> {
     Ok(quote!(#function))
 }
 
-fn expand_async(args: Args, function: &mut ItemFn) -> Result<TokenStream> {
-    let context = context_expression(&args)?;
+fn expand_async(args: &Args, function: &mut ItemFn) -> Result<TokenStream> {
+    let context = context_expression(args)?;
     let body = &function.block;
     let crate_path = crate_path()?;
     function.block = syn::parse_quote!({
@@ -46,7 +46,11 @@ fn context_expression(args: &Args) -> Result<TokenStream> {
     let mut expression = quote!(#crate_path::LogContext::new());
     let mut seen = std::collections::HashSet::new();
     for section in &args.sections {
-        for field in &section.fields {
+        let (fields, method) = match section {
+            Section::LocalFields(fields) => (fields, format_ident!("with_local_field")),
+            Section::InheritedFields(fields) => (fields, format_ident!("with_inherited_field")),
+        };
+        for field in fields {
             let key = field.key_text();
             if !seen.insert(key) {
                 return Err(Error::new(field_span(field), "duplicate log_scope field"));
@@ -70,11 +74,6 @@ fn context_expression(args: &Args) -> Result<TokenStream> {
                         "`sval` capture is not supported by context-logger",
                     ));
                 }
-            };
-            let method = if section.inherited {
-                format_ident!("with_inherited_field")
-            } else {
-                format_ident!("with_local_field")
             };
             expression = quote!(#expression.#method(#key, #value));
         }
