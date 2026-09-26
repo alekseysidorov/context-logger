@@ -1,0 +1,218 @@
+use syn::{
+    Expr, Ident, LitStr, Result, Token, parenthesized,
+    parse::{Parse, ParseStream},
+};
+
+#[derive(Debug)]
+pub struct Args {
+    pub sections: Vec<Section>,
+}
+
+#[derive(Debug)]
+pub struct Section {
+    pub inherited: bool,
+    pub fields: Vec<Field>,
+}
+
+#[derive(Debug)]
+pub struct Field {
+    pub key: Key,
+    pub mode: Mode,
+    pub value: Expr,
+}
+
+#[derive(Debug)]
+pub enum Key {
+    Ident(Ident),
+    String(LitStr),
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Mode {
+    Default,
+    Debug,
+    Display,
+    Error,
+    Serde,
+    Sval,
+}
+
+impl Parse for Args {
+    fn parse(input: ParseStream<'_>) -> Result<Self> {
+        let mut sections = Vec::new();
+        while !input.is_empty() {
+            let name: Ident = input.parse()?;
+            let inherited = match name.to_string().as_str() {
+                "local_fields" => false,
+                "inherited_fields" => true,
+                _ => return Err(syn::Error::new(name.span(), "unknown log_scope section")),
+            };
+            if sections
+                .iter()
+                .any(|section: &Section| section.inherited == inherited)
+            {
+                return Err(syn::Error::new(name.span(), "duplicate log_scope section"));
+            }
+            let content;
+            parenthesized!(content in input);
+            sections.push(Section {
+                inherited,
+                fields: parse_fields(&content)?,
+            });
+            let _ = input.parse::<Token![,]>();
+        }
+        Ok(Self { sections })
+    }
+}
+
+fn parse_fields(input: ParseStream<'_>) -> Result<Vec<Field>> {
+    let mut fields = Vec::new();
+    while !input.is_empty() {
+        let key = if input.peek(LitStr) {
+            Key::String(input.parse()?)
+        } else {
+            Key::Ident(input.parse()?)
+        };
+        let mode = if input.peek(Token![:]) {
+            input.parse::<Token![:]>()?;
+            parse_mode(input)?
+        } else {
+            Mode::Default
+        };
+        let value = if input.peek(Token![=]) {
+            input.parse::<Token![=]>()?;
+            input.parse()?
+        } else {
+            match &key {
+                Key::Ident(ident) => syn::parse_quote!(#ident),
+                Key::String(lit) => {
+                    return Err(syn::Error::new(
+                        lit.span(),
+                        "shorthand requires an identifier key",
+                    ));
+                }
+            }
+        };
+        let key_text = match &key {
+            Key::Ident(i) => i.to_string(),
+            Key::String(s) => s.value(),
+        };
+        if fields
+            .iter()
+            .any(|field: &Field| field.key_text() == key_text)
+        {
+            return Err(syn::Error::new_spanned(
+                key_token(&key),
+                "duplicate log_scope field",
+            ));
+        }
+        fields.push(Field { key, mode, value });
+        if input.is_empty() {
+            break;
+        }
+        input.parse::<Token![,]>()?;
+    }
+    Ok(fields)
+}
+
+fn parse_mode(input: ParseStream<'_>) -> Result<Mode> {
+    if input.peek(Token![?]) {
+        input.parse::<Token![?]>()?;
+        return Ok(Mode::Debug);
+    }
+    if input.peek(Token![%]) {
+        input.parse::<Token![%]>()?;
+        return Ok(Mode::Display);
+    }
+    let ident: Ident = input.parse()?;
+    match ident.to_string().as_str() {
+        "debug" => Ok(Mode::Debug),
+        "display" => Ok(Mode::Display),
+        "err" => Ok(Mode::Error),
+        "serde" => Ok(Mode::Serde),
+        "sval" => Ok(Mode::Sval),
+        _ => Err(syn::Error::new(
+            ident.span(),
+            "unknown log_scope capture modifier",
+        )),
+    }
+}
+
+impl Field {
+    fn key_text(&self) -> String {
+        match &self.key {
+            Key::Ident(i) => i.to_string(),
+            Key::String(s) => s.value(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use syn::parse_str;
+
+    use super::*;
+
+    #[test]
+    fn parses_sections_and_capture_modes() {
+        let args: Args = parse_str(
+            r#"
+                inherited_fields(request_id, user:? = user, "http.method":% = request.method),
+                local_fields(operation = "load", payload:serde)
+            "#,
+        )
+        .unwrap();
+
+        assert_eq!(args.sections.len(), 2);
+        assert!(args.sections[0].inherited);
+        assert!(!args.sections[1].inherited);
+        assert!(matches!(args.sections[0].fields[0].mode, Mode::Default));
+        assert!(matches!(args.sections[0].fields[1].mode, Mode::Debug));
+        assert!(matches!(args.sections[0].fields[2].mode, Mode::Display));
+        assert!(matches!(args.sections[1].fields[1].mode, Mode::Serde));
+    }
+
+    #[test]
+    fn parses_all_modifier_spellings() {
+        let args: Args = parse_str(
+            "local_fields(a:? = a, b:debug = b, c:% = c, d:display = d, e:err = e, f:serde = f, g:sval = g)",
+        )
+        .unwrap();
+
+        let modes = args.sections[0]
+            .fields
+            .iter()
+            .map(|field| field.mode)
+            .collect::<Vec<_>>();
+        assert!(matches!(
+            modes.as_slice(),
+            [
+                Mode::Debug,
+                Mode::Debug,
+                Mode::Display,
+                Mode::Display,
+                Mode::Error,
+                Mode::Serde,
+                Mode::Sval
+            ]
+        ));
+    }
+
+    #[test]
+    fn rejects_duplicate_sections_and_keys() {
+        assert!(parse_str::<Args>("local_fields(a = 1), local_fields(b = 2)").is_err());
+        assert!(parse_str::<Args>("local_fields(a = 1, a = 2)").is_err());
+        assert!(parse_str::<Args>("other_fields(a = 1)").is_err());
+    }
+
+    #[test]
+    fn rejects_string_shorthand() {
+        assert!(parse_str::<Args>(r#"local_fields("field")"#).is_err());
+    }
+}
+fn key_token(key: &Key) -> proc_macro2::TokenStream {
+    match key {
+        Key::Ident(i) => quote::quote!(#i),
+        Key::String(s) => quote::quote!(#s),
+    }
+}
