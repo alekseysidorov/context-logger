@@ -7,7 +7,7 @@ use syn::{
     punctuated::Punctuated,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ContextFields {
     pub sections: Vec<Section>,
 }
@@ -30,21 +30,21 @@ impl ContextFields {
     }
 }
 
-#[derive(Clone, Debug, EnumDiscriminants)]
+#[derive(Clone, Debug, EnumDiscriminants, PartialEq, Eq)]
 #[strum_discriminants(name(SectionKind), derive(Hash))]
 pub enum Section {
     LocalFields(Vec<Field>),
     InheritedFields(Vec<Field>),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Field {
     pub key: Key,
     pub mode: Mode,
     pub value: Expr,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Key {
     Ident(Ident),
     String(LitStr),
@@ -203,21 +203,14 @@ fn key_token(key: &Key) -> proc_macro2::TokenStream {
 
 #[cfg(test)]
 mod tests {
-    use syn::parse_str;
+    use pretty_assertions::assert_eq;
+    use syn::{parse_quote, parse_str};
 
     use super::*;
 
-    impl Section {
-        fn all_fields(&self) -> &[Field] {
-            match self {
-                Self::LocalFields(fields) | Self::InheritedFields(fields) => fields,
-            }
-        }
-    }
-
     #[test]
     fn parses_sections_and_capture_modes() {
-        let args: ContextFields = parse_str(
+        let actual: ContextFields = parse_str(
             r#"
                 inherited_fields(request_id, user:? = user, "http.method":% = request.method),
                 local_fields(operation = "load", payload:serde)
@@ -225,45 +218,63 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(args.sections.len(), 2);
-        assert!(matches!(args.sections[0], Section::InheritedFields(_)));
-        assert!(matches!(args.sections[1], Section::LocalFields(_)));
-        assert!(matches!(
-            args.sections[0].all_fields()[0].mode,
-            Mode::Default
-        ));
-        assert!(matches!(args.sections[0].all_fields()[1].mode, Mode::Debug));
-        assert!(matches!(
-            args.sections[0].all_fields()[2].mode,
-            Mode::Display
-        ));
-        assert!(matches!(args.sections[1].all_fields()[1].mode, Mode::Serde));
+        let expected = ContextFields {
+            sections: vec![
+                Section::InheritedFields(vec![
+                    Field {
+                        key: Key::Ident(parse_quote!(request_id)),
+                        mode: Mode::Default,
+                        value: parse_quote!(request_id),
+                    },
+                    Field {
+                        key: Key::Ident(parse_quote!(user)),
+                        mode: Mode::Debug,
+                        value: parse_quote!(user),
+                    },
+                    Field {
+                        key: Key::String(parse_quote!("http.method")),
+                        mode: Mode::Display,
+                        value: parse_quote!(request.method),
+                    },
+                ]),
+                Section::LocalFields(vec![
+                    Field {
+                        key: Key::Ident(parse_quote!(operation)),
+                        mode: Mode::Default,
+                        value: parse_quote!("load"),
+                    },
+                    Field {
+                        key: Key::Ident(parse_quote!(payload)),
+                        mode: Mode::Serde,
+                        value: parse_quote!(payload),
+                    },
+                ]),
+            ],
+        };
+
+        assert_eq!(actual, expected);
     }
 
     #[test]
     fn parses_all_modifier_spellings() {
-        let args: ContextFields = parse_str(
+        let actual: ContextFields = parse_str(
             "local_fields(a:? = a, b:debug = b, c:% = c, d:display = d, e:err = e, f:serde = f, g:sval = g)",
         )
         .unwrap();
 
-        let modes = args.sections[0]
-            .all_fields()
-            .iter()
-            .map(|field| field.mode)
-            .collect::<Vec<_>>();
-        assert!(matches!(
-            modes.as_slice(),
-            [
-                Mode::Debug,
-                Mode::Debug,
-                Mode::Display,
-                Mode::Display,
-                Mode::Error,
-                Mode::Serde,
-                Mode::Sval
-            ]
-        ));
+        let expected = ContextFields {
+            sections: vec![Section::LocalFields(vec![
+                parse_quote!(a:? = a),
+                parse_quote!(b:debug = b),
+                parse_quote!(c:% = c),
+                parse_quote!(d:display = d),
+                parse_quote!(e:err = e),
+                parse_quote!(f:serde = f),
+                parse_quote!(g:sval = g),
+            ])],
+        };
+
+        assert_eq!(actual, expected);
     }
 
     #[test]
