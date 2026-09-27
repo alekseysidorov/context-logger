@@ -44,6 +44,24 @@ fn raw_identifier_scope(r#type: u32) {
     log::info!("raw identifier");
 }
 
+fn log_keyword_key(value: u32) {
+    log::info!(type = value; "keyword key");
+}
+
+#[log_scope(local_fields(type = value))]
+fn scope_keyword_key(value: u32) {
+    log::info!("keyword key");
+}
+
+fn log_raw_identifier_key(r#type: u32) {
+    log::info!(r#type = r#type; "raw identifier key");
+}
+
+#[log_scope(local_fields(r#type = r#type))]
+fn scope_raw_identifier_key(r#type: u32) {
+    log::info!("raw identifier key");
+}
+
 #[log_scope(
     inherited_fields(request_id),
     local_fields(operation = "sync", user = user),
@@ -191,5 +209,20 @@ async fn derived_scope_enriches_sync_and_async_records() {
     assert_eq!(
         Value::from(raw_identifier_record.fields),
         json!({"r#type": 42})
+    );
+
+    log_keyword_key(42);
+    let log_keyword_record = records.recv().unwrap();
+    scope_keyword_key(42);
+    let scope_keyword_record = records.recv().unwrap();
+    assert_eq!(log_keyword_record.fields, scope_keyword_record.fields);
+
+    log_raw_identifier_key(42);
+    let log_raw_identifier_record = records.recv().unwrap();
+    scope_raw_identifier_key(42);
+    let scope_raw_identifier_record = records.recv().unwrap();
+    assert_eq!(
+        log_raw_identifier_record.fields,
+        scope_raw_identifier_record.fields
     );
 }
