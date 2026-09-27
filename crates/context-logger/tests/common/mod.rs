@@ -12,7 +12,7 @@ pub struct RecordSnapshot {
 }
 
 #[must_use]
-pub fn channel_logger() -> (ChannelLogger, Receiver<RecordSnapshot>) {
+pub fn init_channel_logger() -> (ChannelLogger, Receiver<RecordSnapshot>) {
     let (sender, receiver) = mpsc::channel();
     (ChannelLogger { sender }, receiver)
 }

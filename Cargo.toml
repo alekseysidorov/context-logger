@@ -3,14 +3,14 @@ members = ["crates/context-logger", "crates/context-logger-derive"]
 resolver = "3"
 
 [workspace.package]
-version = "0.2.0"
+version = "0.2.1"
 edition = "2024"
 rust-version = "1.85"
 repository = "https://github.com/alekseysidorov/context-logger"
 license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
-context-logger-derive = { path = "crates/context-logger-derive", version = "0.2.0" }
+context-logger-derive = { path = "crates/context-logger-derive", version = "0.2.1" }
 env_logger = { version = "0.11", features = ["kv"] }
 log = { version = "0.4.33", features = ["kv_serde"] }
 manyhow = "0.14"

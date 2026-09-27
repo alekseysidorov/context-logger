@@ -2,15 +2,15 @@
 // tests into separate files to avoid multiple initializations of the logger.
 
 use context_logger::{ContextLogger, LogContext, LogContextExt};
-use serde_json::json;
+use serde_json::{Value, json};
 
-use crate::common::channel_logger;
+use crate::common::init_channel_logger;
 
 pub mod common;
 
 #[test]
 fn test_inherited_fields_shadowing() {
-    let (logger, records) = channel_logger();
+    let (logger, records) = init_channel_logger();
     ContextLogger::new(logger).init(log::LevelFilter::Trace);
 
     LogContext::new()
@@ -29,15 +29,12 @@ fn test_inherited_fields_shadowing() {
 
     let record = records.recv().unwrap();
     assert_eq!(
-        record.fields,
+        Value::from(record.fields),
         json!({
             "answer": 42,
             "name": "Robin",
             "shadow": true,
             "inherited_shadow": "child",
         })
-        .as_object()
-        .unwrap()
-        .clone()
     );
 }

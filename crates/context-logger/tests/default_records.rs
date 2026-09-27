@@ -4,13 +4,13 @@
 use context_logger::{ContextLogger, LogValue};
 use serde_json::json;
 
-use crate::common::channel_logger;
+use crate::common::init_channel_logger;
 
 pub mod common;
 
 #[test]
 fn test_default() {
-    let (logger, records) = channel_logger();
+    let (logger, records) = init_channel_logger();
     ContextLogger::new(logger)
         .with_default_field("tag", 42)
         .with_default_field_fn("my_log_level", |log_record| log_record.level().to_string())
