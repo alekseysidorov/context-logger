@@ -9,6 +9,9 @@ rust-version = "1.85"
 repository = "https://github.com/alekseysidorov/context-logger"
 license = "MIT OR Apache-2.0"
 
+[workspace.metadata.crane]
+name = "context-logger"
+
 [workspace.dependencies]
 context-logger-derive = { path = "crates/context-logger-derive", version = "0.2.1" }
 env_logger = { version = "0.11", features = ["kv"] }
