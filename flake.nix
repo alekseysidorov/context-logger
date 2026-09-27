@@ -65,6 +65,7 @@
                 stable = pkgs.rust-bin.stable.${rustVersions.stable}.default.override {
                   extensions = [
                     "clippy"
+                    "llvm-tools-preview"
                     "rust-src"
                     "rustfmt"
                   ];
@@ -87,6 +88,7 @@
                 # Reuse the shared dependency artifacts and vendored sources when building the crate.
                 default = rustDev.craneLib.buildPackage {
                   inherit src;
+
                   strictDeps = true;
                   cargoVendorDir = rustDev.craneLib.vendorCargoDeps { inherit src; };
                   cargoArtifacts = rustDev.cargoArtifacts;
@@ -132,6 +134,7 @@
                 packages = [
                   rustToolchains.stable
                   pkgs.cargo-audit
+                  pkgs.cargo-llvm-cov
                   pkgs.cargo-nextest
                 ];
               };

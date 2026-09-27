@@ -207,6 +207,30 @@ async fn spawn_background_job(user_id: &str) {
 
 <!-- ANCHOR_END: async_example -->
 
+### Function Logging Scopes
+
+The `log_scope` attribute adds fields to the existing `LogContext` while a
+function runs. It does not create log records or tracing spans.
+
+```rust
+use context_logger::log_scope;
+
+#[log_scope(
+    local_fields(operation = "load_profile"),
+    inherited_fields(request_id),
+)]
+async fn load_profile(request_id: String) {
+    log::info!("loading profile");
+}
+```
+
+Field captures support the default conversion, `:?`/`:debug`,
+`:%`/`:display`, `:err`, and `:serde` forms. `:sval` is not currently
+supported. Values are stored using `LogContext`'s owned `LogValue` semantics,
+not borrowed like values in a one-shot `log!` call. Captures are by value, so
+shorthand such as `local_fields(value)` may move `value`; clone it explicitly
+when it is needed afterward, for example `local_fields(value = value.clone())`.
+
 ## License
 
 This project is licensed under either the [Apache License, Version 2.0]

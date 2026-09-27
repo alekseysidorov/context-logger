@@ -59,6 +59,9 @@ use std::{borrow::Cow, collections::HashMap};
 
 use crate::fields::LogFieldRef;
 
+// Adds local crate to extern prelude as `context_logger`
+extern crate self as context_logger;
+
 mod context;
 mod fields;
 pub mod future;
@@ -66,6 +69,10 @@ mod scope;
 mod value;
 
 type LogValueFn = Box<dyn Fn(&log::Record) -> LogValue + Send + Sync>;
+
+#[cfg(feature = "derive")]
+#[cfg_attr(docsrs, doc(cfg(feature = "derive")))]
+pub use context_logger_derive::log_scope;
 
 pub use self::{
     context::LogContext,

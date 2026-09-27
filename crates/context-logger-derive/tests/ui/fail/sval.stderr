@@ -1,0 +1,5 @@
+error: `sval` capture is not supported by context-logger
+ --> tests/ui/fail/sval.rs:3:26
+  |
+3 | #[log_scope(local_fields(value:sval = value))]
+  |                          ^^^^^
