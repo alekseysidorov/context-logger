@@ -2,7 +2,7 @@
 // tests into separate files to avoid multiple initializations of the logger.
 
 use context_logger::{ContextLogger, LogContext, LogScope};
-use serde_json::json;
+use serde_json::{Value, json};
 
 use crate::common::init_channel_logger;
 
@@ -17,7 +17,7 @@ fn test_smoke() {
     log::info!("Smoke on the water, fire in the sky");
 
     assert_eq!(
-        records.recv().unwrap().fields,
-        json!({ "answer": 42 }).as_object().unwrap().clone()
+        Value::from(records.recv().unwrap().fields),
+        json!({ "answer": 42 })
     );
 }

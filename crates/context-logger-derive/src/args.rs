@@ -215,6 +215,7 @@ mod tests {
 
     use super::*;
 
+    // Happy-path coverage for sections, keys, shorthand, and capture modes.
     #[test]
     fn parses_sections_and_capture_modes() {
         let actual: ContextFields = parse_str(
@@ -262,6 +263,7 @@ mod tests {
         assert_eq!(actual, expected);
     }
 
+    // Ensure punctuation and named spellings map to the same capture modes.
     #[test]
     fn parses_all_modifier_spellings() {
         let actual: ContextFields = parse_str(
@@ -284,6 +286,7 @@ mod tests {
         assert_eq!(actual, expected);
     }
 
+    // Validation coverage for duplicate and unknown parser inputs.
     #[test]
     fn rejects_duplicate_sections_and_keys() {
         assert!(parse_str::<ContextFields>("local_fields(a = 1), local_fields(b = 2)").is_err());
@@ -291,11 +294,13 @@ mod tests {
         assert!(parse_str::<ContextFields>("other_fields(a = 1)").is_err());
     }
 
+    // The section list must use commas as separators.
     #[test]
     fn rejects_missing_section_separator() {
         assert!(parse_str::<ContextFields>("local_fields(a = 1) inherited_fields(b = 2)").is_err());
     }
 
+    // String keys require an explicit value and cannot use shorthand.
     #[test]
     fn rejects_string_shorthand() {
         assert!(parse_str::<ContextFields>(r#"local_fields("field")"#).is_err());

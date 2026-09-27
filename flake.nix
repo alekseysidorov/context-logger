@@ -65,6 +65,7 @@
                 stable = pkgs.rust-bin.stable.${rustVersions.stable}.default.override {
                   extensions = [
                     "clippy"
+                    "llvm-tools-preview"
                     "rust-src"
                     "rustfmt"
                   ];
@@ -132,6 +133,7 @@
                 packages = [
                   rustToolchains.stable
                   pkgs.cargo-audit
+                  pkgs.cargo-llvm-cov
                   pkgs.cargo-nextest
                 ];
               };

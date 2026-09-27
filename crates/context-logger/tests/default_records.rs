@@ -2,7 +2,7 @@
 // tests into separate files to avoid multiple initializations of the logger.
 
 use context_logger::{ContextLogger, LogValue};
-use serde_json::json;
+use serde_json::{Value, json};
 
 use crate::common::init_channel_logger;
 
@@ -23,15 +23,12 @@ fn test_default() {
 
     let record = records.recv().unwrap();
     assert_eq!(
-        record.fields,
+        Value::from(record.fields),
         json!({
             "tag": 42,
             "my_log_level": "INFO",
             "thread_name": "test_default",
         })
-        .as_object()
-        .unwrap()
-        .clone()
     );
     assert_eq!(record.message, "Wazzup everyone!");
 }
