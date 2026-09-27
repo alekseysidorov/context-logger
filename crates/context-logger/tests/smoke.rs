@@ -4,13 +4,13 @@
 use context_logger::{ContextLogger, LogContext, LogScope};
 use serde_json::json;
 
-use crate::common::channel_logger;
+use crate::common::init_channel_logger;
 
 pub mod common;
 
 #[test]
 fn test_smoke() {
-    let (logger, records) = channel_logger();
+    let (logger, records) = init_channel_logger();
     ContextLogger::new(logger).init(log::LevelFilter::Trace);
 
     let _guard = LogScope::enter(LogContext::new().with_local_field("answer", 42));
