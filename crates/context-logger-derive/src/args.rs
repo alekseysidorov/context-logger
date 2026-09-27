@@ -2,7 +2,9 @@ use std::collections::HashSet;
 
 use strum::EnumDiscriminants;
 use syn::{
-    Expr, Ident, LitStr, Result, Token, parenthesized,
+    Expr, Ident, LitStr, Result, Token,
+    ext::IdentExt,
+    parenthesized,
     parse::{Parse, ParseStream},
     punctuated::Punctuated,
 };
@@ -138,7 +140,7 @@ impl Parse for Key {
         if input.peek(LitStr) {
             Ok(Self::String(input.parse()?))
         } else {
-            Ok(Self::Ident(input.parse()?))
+            Ok(Self::Ident(Ident::parse_any(input)?))
         }
     }
 }
@@ -160,7 +162,9 @@ impl Parse for Field {
             input.parse()?
         } else {
             match &key {
-                Key::Ident(ident) => syn::parse_quote!(#ident),
+                Key::Ident(ident) => syn::parse2(quote::quote!(#ident)).map_err(|_| {
+                    syn::Error::new(ident.span(), "shorthand requires an identifier key")
+                })?,
                 Key::String(lit) => {
                     return Err(syn::Error::new(
                         lit.span(),
