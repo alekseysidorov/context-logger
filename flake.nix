@@ -87,7 +87,9 @@
               packages = {
                 # Reuse the shared dependency artifacts and vendored sources when building the crate.
                 default = rustDev.craneLib.buildPackage {
+                  pname = "context-logger";
                   inherit src;
+
                   strictDeps = true;
                   cargoVendorDir = rustDev.craneLib.vendorCargoDeps { inherit src; };
                   cargoArtifacts = rustDev.cargoArtifacts;
