@@ -43,7 +43,9 @@ pub enum Mode {
 }
 
 impl ContextFields {
-    fn parse_fields(input: ParseStream<'_>, seen_keys: &mut HashSet<String>) -> Result<Vec<Field>> {
+    fn parse_fields(input: ParseStream<'_>) -> Result<Vec<Field>> {
+        let mut seen_keys = HashSet::new();
+
         Punctuated::<Field, Token![,]>::parse_terminated(input)?
             .into_iter()
             .map(|field| {
@@ -62,7 +64,6 @@ impl ContextFields {
 
 impl Parse for ContextFields {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
-        let mut seen_keys = HashSet::new();
         let mut seen_sections = HashSet::new();
 
         let mut sections = Vec::new();
@@ -80,7 +81,7 @@ impl Parse for ContextFields {
             let fields = {
                 let content;
                 parenthesized!(content in input);
-                Self::parse_fields(&content, &mut seen_keys)?
+                Self::parse_fields(&content)?
             };
             sections.push(Section::new(section_kind, fields));
 
@@ -286,12 +287,22 @@ mod tests {
         assert_eq!(actual, expected);
     }
 
-    // Validation coverage for duplicate and unknown parser inputs.
+    // Validation coverage for duplicate sections, duplicate fields, and unknown parser inputs.
     #[test]
-    fn rejects_duplicate_sections_and_keys() {
+    fn rejects_duplicate_sections_and_fields() {
         assert!(parse_str::<ContextFields>("local_fields(a = 1), local_fields(b = 2)").is_err());
         assert!(parse_str::<ContextFields>("local_fields(a = 1, a = 2)").is_err());
+        assert!(parse_str::<ContextFields>("inherited_fields(a = 1, a = 2)").is_err());
         assert!(parse_str::<ContextFields>("other_fields(a = 1)").is_err());
+    }
+
+    // Local and inherited fields are separate declaration namespaces.
+    #[test]
+    fn accepts_same_field_in_local_and_inherited_sections() {
+        let fields: ContextFields =
+            parse_str("inherited_fields(value = inherited), local_fields(value = local)").unwrap();
+
+        assert_eq!(fields.sections.len(), 2);
     }
 
     // The section list must use commas as separators.

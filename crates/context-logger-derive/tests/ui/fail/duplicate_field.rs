@@ -1,6 +1,6 @@
 use context_logger::log_scope;
 
-#[log_scope(inherited_fields(value = 1), local_fields(value = 2))]
+#[log_scope(local_fields(value = 1, value = 2))]
 fn invalid() {}
 
 fn main() {}
