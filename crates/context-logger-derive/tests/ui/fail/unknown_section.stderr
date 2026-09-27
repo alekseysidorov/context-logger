@@ -1,0 +1,5 @@
+error: unknown log_scope section: other_fields
+ --> tests/ui/fail/unknown_section.rs:3:13
+  |
+3 | #[log_scope(other_fields(value = 42))]
+  |             ^^^^^^^^^^^^

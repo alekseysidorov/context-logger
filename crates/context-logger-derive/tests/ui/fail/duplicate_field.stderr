@@ -1,0 +1,5 @@
+error: duplicate log_scope field
+ --> tests/ui/fail/duplicate_field.rs:3:55
+  |
+3 | #[log_scope(inherited_fields(value = 1), local_fields(value = 2))]
+  |                                                       ^^^^^

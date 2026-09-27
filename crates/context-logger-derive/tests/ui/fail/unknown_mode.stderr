@@ -1,0 +1,5 @@
+error: unknown log_scope capture modifier
+ --> tests/ui/fail/unknown_mode.rs:3:32
+  |
+3 | #[log_scope(local_fields(value:unknown = value))]
+  |                                ^^^^^^^
