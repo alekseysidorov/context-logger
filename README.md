@@ -227,7 +227,9 @@ async fn load_profile(request_id: String) {
 Field captures support the default conversion, `:?`/`:debug`,
 `:%`/`:display`, `:err`, and `:serde` forms. `:sval` is not currently
 supported. Values are stored using `LogContext`'s owned `LogValue` semantics,
-not borrowed like values in a one-shot `log!` call.
+not borrowed like values in a one-shot `log!` call. Captures are by value, so
+shorthand such as `local_fields(value)` may move `value`; clone it explicitly
+when it is needed afterward, for example `local_fields(value = value.clone())`.
 
 ## License
 

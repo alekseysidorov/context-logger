@@ -34,6 +34,16 @@ fn shorthand_scope(a: u32, b: u32, c: u32) -> context_logger::LogContext {
     LogScope::current_context()
 }
 
+#[log_scope(inherited_fields(value = "inherited"), local_fields(value = "local"))]
+fn same_key_scope() {
+    log::info!("same key");
+}
+
+#[log_scope(local_fields(r#type))]
+fn raw_identifier_scope(r#type: u32) {
+    log::info!("raw identifier");
+}
+
 #[log_scope(
     inherited_fields(request_id),
     local_fields(operation = "sync", user = user),
@@ -165,5 +175,21 @@ async fn derived_scope_enriches_sync_and_async_records() {
             "error": "error value",
             "serde": { "answer": 42 },
         })
+    );
+
+    same_key_scope();
+    let shadowed_record = records.recv().unwrap();
+    assert_eq!(shadowed_record.message, "same key");
+    assert_eq!(
+        Value::from(shadowed_record.fields),
+        json!({"value": "local"})
+    );
+
+    raw_identifier_scope(42);
+    let raw_identifier_record = records.recv().unwrap();
+    assert_eq!(raw_identifier_record.message, "raw identifier");
+    assert_eq!(
+        Value::from(raw_identifier_record.fields),
+        json!({"r#type": 42})
     );
 }
