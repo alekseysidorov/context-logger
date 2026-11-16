@@ -1,5 +1,6 @@
 //! # Overview
 #![doc = include_utils::include_md!("README.md:description")]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 //!
 //! ## How it works
 //!
