@@ -1,10 +1,5 @@
 # Changelog
 
-## Unreleased
-
-- Add the `#[log_scope]` function attribute for declaring local and inherited
-  logging context fields.
-
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
@@ -12,6 +7,17 @@ and this project adheres to
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+- Added the `#[log_scope]` function attribute for declaring local and inherited
+  logging context fields.
+- Fixed duplicate field detection so local and inherited fields can share a key
+  while duplicates within one section remain rejected.
+- Added compatibility for keyword keys such as `type` and `r#type`.
+
+## [0.2.1] - 2026.09.20
+
+- Hotfix: restored the release checks after updating `nix-devtools` and removed
+  the unavailable `rust-analyzer` package from the development shell.
 
 ## [0.2.0] - 2026.07.29
 

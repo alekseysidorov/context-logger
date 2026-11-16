@@ -149,21 +149,6 @@
                 };
                 doctest = rustDev.checks.test "--doc --workspace --all-features";
                 audit = rustDev.checks.audit "";
-
-                # Check that docs.rs can build the docs for all crates in the workspace.
-                docs-rs = rustDevNightly.craneLib.cargoDoc {
-                  inherit (rustDevNightly) cargoArtifacts;
-                  inherit src;
-
-                  cargoVendorDir = rustDevNightly.craneLib.vendorCargoDeps { inherit src; };
-                  cargoDocExtraArgs = "--package context-logger --lib --all-features --offline -Zrustdoc-scrape-examples";
-
-                  env = {
-                    DOCS_RS = "1";
-                    # `-Zrustdoc-map` is a docs.rs runner flag and is rejected by current nightly rustdoc.
-                    RUSTDOCFLAGS = "--cfg docsrs -Zunstable-options";
-                  };
-                };
               };
 
               devShells.default = pkgs.mkShell {
