@@ -57,10 +57,11 @@
               # Keep the minimum compiler explicit while following the current stable channel.
               rustVersions = {
                 msrv = "1.85.1";
-                stable = "1.96.0";
+                semver = "1.92.0";
+                stable = "1.99.1";
               };
 
-              # Checks use MSRV; development follows stable, and nightly supplies only rustfmt.
+              # Checks use MSRV; development follows stable, and nightly covers docs.rs plus formatting.
               rustToolchains = {
                 stable = pkgs.rust-bin.stable.${rustVersions.stable}.default.override {
                   extensions = [
@@ -71,7 +72,10 @@
                   ];
                 };
                 msrv = pkgs.rust-bin.stable.${rustVersions.msrv}.default;
-                nightly = pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.rustfmt);
+                semver = pkgs.rust-bin.stable.${rustVersions.semver}.default;
+                nightly = (pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default)).override {
+                  extensions = [ "rustfmt" ];
+                };
               };
 
               # Respect .gitignore while retaining all project files needed by Cargo.
@@ -81,6 +85,12 @@
               rustDev = pkgs.mkRustDevHelpers {
                 inherit pkgs src;
                 toolchain = rustToolchains.msrv;
+              };
+
+              # Keep the docs.rs-specific rustdoc configuration testable locally.
+              rustDevNightly = pkgs.mkRustDevHelpers {
+                inherit pkgs src;
+                toolchain = rustToolchains.nightly;
               };
             in
             {
@@ -99,7 +109,8 @@
                 check-cargo-semver = pkgs.writeNushellApplication {
                   name = "check-cargo-semver";
                   runtimeInputs = [
-                    rustToolchains.stable
+                    # cargo-semver-checks needs rustc >= 1.91 and supports rustdoc formats v56 and v57.
+                    rustToolchains.semver
                     pkgs.cargo-semver-checks
                   ];
                   text = ''
@@ -124,8 +135,21 @@
                 # Keep the default-feature and all-feature test surfaces independently visible in CI.
                 test = rustDev.checks.nextest "--workspace --all-targets --no-default-features";
                 test-all-features = rustDev.checks.nextest "--workspace --all-targets --all-features";
+
                 clippy = rustDev.checks.clippy "--workspace --all-targets --all-features -- -D warnings";
                 doc = rustDev.checks.doc "--workspace --all-features --no-deps";
+                docs-rs = rustDevNightly.craneLib.cargoDoc {
+                  inherit (rustDevNightly) cargoArtifacts;
+
+                  inherit src;
+                  cargoVendorDir = rustDevNightly.craneLib.vendorCargoDeps { inherit src; };
+                  cargoDocExtraArgs = "--package context-logger --lib --all-features --offline -Zrustdoc-scrape-examples";
+                  env = {
+                    DOCS_RS = "1";
+                    # `-Zrustdoc-map` is a docs.rs runner flag and is rejected by current nightly rustdoc.
+                    RUSTDOCFLAGS = "--cfg docsrs -Zunstable-options";
+                  };
+                };
                 doctest = rustDev.checks.test "--doc --workspace --all-features";
                 audit = rustDev.checks.audit "";
               };
