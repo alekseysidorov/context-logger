@@ -57,6 +57,7 @@
               # Keep the minimum compiler explicit while following the current stable channel.
               rustVersions = {
                 msrv = "1.85.1";
+                semver = "1.92.0";
                 stable = "1.99.1";
               };
 
@@ -71,6 +72,7 @@
                   ];
                 };
                 msrv = pkgs.rust-bin.stable.${rustVersions.msrv}.default;
+                semver = pkgs.rust-bin.stable.${rustVersions.semver}.default;
                 nightly = (pkgs.rust-bin.selectLatestNightlyWith (toolchain: toolchain.default)).override {
                   extensions = [ "rustfmt" ];
                 };
@@ -107,7 +109,8 @@
                 check-cargo-semver = pkgs.writeNushellApplication {
                   name = "check-cargo-semver";
                   runtimeInputs = [
-                    rustToolchains.stable
+                    # cargo-semver-checks needs rustc >= 1.91 and supports rustdoc formats v56 and v57.
+                    rustToolchains.semver
                     pkgs.cargo-semver-checks
                   ];
                   text = ''
