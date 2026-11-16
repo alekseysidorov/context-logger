@@ -8,16 +8,32 @@ and this project adheres to
 
 ## [Unreleased]
 
+- No changes yet.
+
+## [0.2.2] - 2026.11.16
+
+### Fixed
+
+- Fixed docs.rs builds by enabling the unstable `doc_cfg` feature only for
+  docs.rs documentation builds.
+
+### Changed
+
+- Added a nightly docs.rs-compatible flake check.
+- Updated Nix inputs and the stable development toolchain.
+
+## [0.2.1] - 2026.09.27
+
+### Added
+
 - Added the `#[log_scope]` function attribute for declaring local and inherited
   logging context fields.
+
+### Fixed
+
 - Fixed duplicate field detection so local and inherited fields can share a key
   while duplicates within one section remain rejected.
 - Added compatibility for keyword keys such as `type` and `r#type`.
-
-## [0.2.1] - 2026.09.20
-
-- Hotfix: restored the release checks after updating `nix-devtools` and removed
-  the unavailable `rust-analyzer` package from the development shell.
 
 ## [0.2.0] - 2026.07.29
 
